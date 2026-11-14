@@ -26,6 +26,7 @@ type fakeHost struct {
 	updates   bool
 	updateNow int
 	bright    []int
+	topbar    []bool
 }
 
 func (h *fakeHost) Launch(a apps.App) error {
@@ -45,6 +46,7 @@ func (h *fakeHost) SaveTheme(id string)         { h.theme = id }
 func (h *fakeHost) SetUpdates(on bool)          { h.updates = on }
 func (h *fakeHost) UpdateNow()                  { h.updateNow++ }
 func (h *fakeHost) SetBrightness(p int)         { h.bright = append(h.bright, p) }
+func (h *fakeHost) SetTopBar(show bool) error   { h.topbar = append(h.topbar, show); return nil }
 
 var names = []string{"Archivos", "Blender", "Calculator", "Discord", "Firefox", "foot", "GIMP", "Inkscape",
 	"Kdenlive", "Krita", "Lite Go", "LibreOffice Writer", "LibreOffice Calc", "Obsidian", "OBS Studio",
@@ -282,5 +284,21 @@ func TestBrightness(t *testing.T) {
 	s.SetStats(sysinfo.Stats{Brightness: -1, Battery: -1})
 	if _, ok := s.brightRect(s.layout(1440, 900)); ok {
 		t.Fatal("a brightness card without a backlight")
+	}
+}
+
+func TestTopBarRow(t *testing.T) {
+	s, h := sample(t)
+	s.TopBarShown = true
+	l := s.layout(1440, 900)
+	click(t, s, l.power.CX(), l.power.CY(), 1440, 900)
+	for i, it := range Power {
+		if it.ID == "topbar" {
+			r := l.powerRow(i)
+			click(t, s, r.CX(), r.CY(), 1440, 900)
+		}
+	}
+	if s.TopBarShown || len(h.topbar) != 1 || h.topbar[0] {
+		t.Fatalf("top bar row: shown=%v calls=%v", s.TopBarShown, h.topbar)
 	}
 }

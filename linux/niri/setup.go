@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"ember/ui"
 )
@@ -101,4 +102,60 @@ func writeIfChanged(p string, b []byte) error {
 		return err
 	}
 	return os.Rename(tmp, p)
+}
+
+// The top bar niri starts (Waybar, from niri's default config). Ember can
+// hide it: the line that starts it is turned into a comment marked as
+// Ember's, so ShowBar can put it back exactly.
+const barMark = "// hidden by Ember: "
+
+func isBarLine(l string) bool {
+	t := strings.TrimSpace(l)
+	return (strings.HasPrefix(t, "spawn-at-startup") || strings.HasPrefix(t, "spawn-sh-at-startup")) && strings.Contains(t, "waybar")
+}
+
+// HideBar comments out the lines of config.kdl that start Waybar. It reports
+// whether it changed anything.
+func HideBar(dir string) (bool, error) {
+	return editBar(dir, true)
+}
+
+// ShowBar puts back the lines HideBar commented out.
+func ShowBar(dir string) (bool, error) {
+	return editBar(dir, false)
+}
+
+// BarHidden reports whether config.kdl has a Waybar line hidden by Ember.
+func BarHidden(dir string) bool {
+	b, err := os.ReadFile(filepath.Join(dir, "config.kdl"))
+	return err == nil && strings.Contains(string(b), barMark)
+}
+
+func editBar(dir string, hide bool) (bool, error) {
+	p := filepath.Join(dir, "config.kdl")
+	b, err := os.ReadFile(p)
+	if err != nil {
+		return false, ErrNoConfig
+	}
+	lines := strings.Split(string(b), "\n")
+	changed := false
+	for i, l := range lines {
+		ind := l[:len(l)-len(strings.TrimLeft(l, " \t"))]
+		rest := strings.TrimLeft(l, " \t")
+		switch {
+		case hide && isBarLine(rest):
+			lines[i] = ind + barMark + rest
+			changed = true
+		case !hide && strings.HasPrefix(rest, barMark):
+			lines[i] = ind + strings.TrimPrefix(rest, barMark)
+			changed = true
+		}
+	}
+	if !changed {
+		return false, nil
+	}
+	if _, err := os.Stat(p + ".before-ember"); err != nil {
+		os.WriteFile(p+".before-ember", b, 0o644)
+	}
+	return true, writeIfChanged(p, []byte(strings.Join(lines, "\n")))
 }

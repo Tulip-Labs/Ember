@@ -28,6 +28,7 @@ const (
 	GScreenOff
 	GDownload
 	GSun
+	GTopBar
 )
 
 // DrawGlyph draws g centered on (cx, cy) in a box of size n.
@@ -134,6 +135,9 @@ func DrawGlyph(g ui.Gfx, k Glyph, cx, cy, n float32, c ui.Color) {
 		line(3.5, 8.5, 20.5, 8.5)
 		dot(6.2, 6.3, 0.9)
 		dot(8.8, 6.3, 0.9)
+	case GTopBar:
+		box(3, 4, 18, 16, 2.5)
+		fillBox(3, 4, 18, 4.5, 2)
 	case GSun:
 		ui.StrokeOval(g, ui.Rect{X: X(8), Y: Y(8), W: 8 * s, H: 8 * s}, w, c)
 		for _, d := range [][4]float32{{12, 2.5, 12, 4.5}, {12, 19.5, 12, 21.5}, {2.5, 12, 4.5, 12}, {19.5, 12, 21.5, 12},

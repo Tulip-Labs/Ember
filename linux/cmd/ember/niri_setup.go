@@ -109,3 +109,67 @@ func removeOldBar(c *niri.Client) {
 	}
 	startDetached([]string{"waybar"})
 }
+
+// The top bar niri starts (Waybar). Ember hides it: Ember's own dashboard
+// has the clock, battery, network and the rest. The power panel's "Top bar"
+// row shows it again.
+
+// autoHideBar hides the top bar the first time Ember 1.0.3 or later runs
+// inside niri.
+func (r *resident) autoHideBar() {
+	if r.niri == nil {
+		return
+	}
+	marker := filepath.Join(r.conf, "bar-hidden-once")
+	if _, err := os.Stat(marker); err == nil {
+		return
+	}
+	os.MkdirAll(r.conf, 0o755)
+	os.WriteFile(marker, nil, 0o644)
+	if err := setTopBar(false, r.niri); err == nil {
+		r.startNote = "The top bar is hidden: Power, then Top bar, brings it back"
+	}
+}
+
+// setTopBar shows or hides Waybar now and at the next sign-in.
+func setTopBar(show bool, c *niri.Client) error {
+	dir := niri.ConfigDir()
+	systemd := func(args ...string) error {
+		return exec.Command("systemctl", append([]string{"--user"}, args...)...).Run()
+	}
+	if !show {
+		if _, err := niri.HideBar(dir); err != nil {
+			return err
+		}
+		// some setups start it as a systemd user service instead
+		if systemd("is-enabled", "--quiet", "waybar.service") == nil {
+			systemd("disable", "--now", "waybar.service")
+			cfg, _ := os.UserConfigDir()
+			os.WriteFile(filepath.Join(cfg, "ember", "waybar-service-was-enabled"), nil, 0o644)
+		}
+		exec.Command("pkill", "-x", "waybar").Run()
+		return nil
+	}
+	if _, err := niri.ShowBar(dir); err != nil {
+		return err
+	}
+	cfg, _ := os.UserConfigDir()
+	flag := filepath.Join(cfg, "ember", "waybar-service-was-enabled")
+	if _, err := os.Stat(flag); err == nil {
+		os.Remove(flag)
+		return systemd("enable", "--now", "waybar.service")
+	}
+	if exec.Command("pgrep", "-x", "waybar").Run() == nil {
+		return nil
+	}
+	if c != nil && c.Spawn([]string{"waybar"}) == nil {
+		return nil
+	}
+	return startDetached([]string{"waybar"})
+}
+
+// SetTopBar is the power panel's "Top bar" row.
+func (r *resident) SetTopBar(show bool) error { return setTopBar(show, r.niri) }
+
+// TopBarShown reports whether niri starts the top bar.
+func topBarShown() bool { return !niri.BarHidden(niri.ConfigDir()) }

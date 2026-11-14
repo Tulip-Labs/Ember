@@ -58,3 +58,27 @@ func TestSetup(t *testing.T) {
 		t.Fatalf("still included: %q", b)
 	}
 }
+
+func TestBar(t *testing.T) {
+	dir := t.TempDir()
+	cfg := "input {\n}\n\nspawn-at-startup \"waybar\"\n    spawn-sh-at-startup \"waybar -c x\"\nspawn-at-startup \"mako\"\n"
+	os.WriteFile(filepath.Join(dir, "config.kdl"), []byte(cfg), 0o644)
+	if ok, err := HideBar(dir); !ok || err != nil {
+		t.Fatal(ok, err)
+	}
+	b, _ := os.ReadFile(filepath.Join(dir, "config.kdl"))
+	if !strings.Contains(string(b), "// hidden by Ember: spawn-at-startup \"waybar\"") || !strings.Contains(string(b), "    // hidden by Ember: spawn-sh-at-startup") || !strings.Contains(string(b), "\nspawn-at-startup \"mako\"") {
+		t.Fatalf("hidden: %q", b)
+	}
+	if !BarHidden(dir) {
+		t.Fatal("not reported hidden")
+	}
+	if ok, _ := HideBar(dir); ok {
+		t.Fatal("hid twice")
+	}
+	ShowBar(dir)
+	b, _ = os.ReadFile(filepath.Join(dir, "config.kdl"))
+	if string(b) != cfg {
+		t.Fatalf("not restored: %q", b)
+	}
+}

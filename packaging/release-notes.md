@@ -1,5 +1,9 @@
 Ember: a calm, full-screen home for your desktop. A dashboard, your apps and your open windows on one pastel screen.
 
+## New in 1.0.3
+
+- Ember hides the top bar niri starts (Waybar) the first time it runs; Power, then Top bar, brings it back. The line in niri's config.kdl that starts it becomes a comment marked as Ember's (the old file is config.kdl.before-ember).
+
 ## New in 1.0.2
 
 - The Ember bar is gone: Ember no longer changes Waybar, the bar at the top of niri. If 1.0.1 had restyled it, 1.0.2 puts Waybar's own files back by itself.

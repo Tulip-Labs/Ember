@@ -30,7 +30,7 @@ import (
 	"ember/sysinfo"
 )
 
-const version = "1.0.2"
+const version = "1.0.3"
 
 func main() {
 	toggle := flag.Bool("toggle", false, "show Ember, or hide it when it is on screen")
@@ -41,7 +41,19 @@ func main() {
 	setupNiri := flag.Bool("setup-niri", false, "add Ember to niri's settings (Super+D, start at sign-in) and exit")
 	removeNiri := flag.Bool("remove-niri", false, "take Ember out of niri's settings and exit")
 	power := flag.Bool("power", false, "show Ember with the power panel open")
+	hideBar := flag.Bool("hide-bar", false, "hide the top bar niri starts (Waybar) and exit")
+	showBar := flag.Bool("show-bar", false, "show the top bar niri starts (Waybar) again and exit")
 	flag.Parse()
+	if *hideBar || *showBar {
+		if err := setTopBar(*showBar, niri.FromEnv()); err != nil {
+			fmt.Fprintln(os.Stderr, "ember:", err)
+			os.Exit(1)
+		}
+		cfg, _ := os.UserConfigDir()
+		os.MkdirAll(filepath.Join(cfg, "ember"), 0o755)
+		os.WriteFile(filepath.Join(cfg, "ember", "bar-hidden-once"), nil, 0o644) // a choice made by hand stays
+		return
+	}
 	if *setupNiri || *removeNiri {
 		os.Exit(niriSetupCmd(*removeNiri))
 	}
@@ -147,6 +159,7 @@ func newResident() *resident {
 	r.loadSettings()
 	r.autoSetupNiri()
 	removeOldBar(r.niri) // the Ember bar of 1.0.1 is gone: Waybar gets its own files back
+	r.autoHideBar()
 	r.niriColors()
 	r.rescan()
 	go r.updateLoop()

@@ -98,6 +98,7 @@ func (w *window) loop() error {
 	s.SetTheme(r.theme)
 	r.mu.Unlock()
 	s.Niri = r.niri != nil
+	s.TopBarShown = topBarShown()
 	s.SetStats(r.stats.Fast())
 	r.stats.Slow()
 	wins := func() {

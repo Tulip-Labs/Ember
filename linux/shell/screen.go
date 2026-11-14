@@ -31,6 +31,8 @@ type Host interface {
 	// into the new version).
 	SetUpdates(on bool)
 	UpdateNow()
+	// SetTopBar shows or hides the top bar niri starts (Waybar).
+	SetTopBar(show bool) error
 	// SetBrightness sets the screen's backlight, 1..100 percent.
 	SetBrightness(percent int)
 }
@@ -50,6 +52,7 @@ var Power = []PowerItem{
 	{GRestart, "Restart", "restart"},
 	{GPower, "Shut down", "poweroff"},
 	{GScreenOff, "Turn the screens off", "screensoff"},
+	{GTopBar, "Top bar", "topbar"},
 	{GDownload, "Automatic updates", "updates"},
 	{GExit, "Exit Ember", "exit"},
 }
@@ -70,6 +73,7 @@ type Screen struct {
 	// Updates: whether they are on, and a notice with its button (empty
 	// when there is nothing to say)
 	UpdatesOn    bool
+	TopBarShown  bool // niri starts its top bar (Waybar)
 	Notice       string
 	NoticeAction string
 
@@ -927,6 +931,12 @@ func (s *Screen) powerPanel(g ui.Gfx, l layout) {
 				label = "Automatic updates: On"
 			}
 		}
+		if it.ID == "topbar" {
+			label = "Top bar: Hidden"
+			if s.TopBarShown {
+				label = "Top bar: Shown"
+			}
+		}
 		ui.TextFit(g, label, r.X+54, ui.Mid(g, r.Y, r.H, f), f, th.Ink, r.W-62)
 		if i == powerSep-1 {
 			g.FillRect(ui.Rect{X: p.X + 20, Y: r.B() + 1.5, W: p.W - 40, H: 1}, th.Body.Alpha(0.16))
@@ -935,6 +945,14 @@ func (s *Screen) powerPanel(g ui.Gfx, l layout) {
 			if it.ID == "updates" {
 				s.UpdatesOn = !s.UpdatesOn
 				s.Host.SetUpdates(s.UpdatesOn)
+				continue
+			}
+			if it.ID == "topbar" {
+				if err := s.Host.SetTopBar(!s.TopBarShown); err != nil {
+					s.Toast("The top bar could not change: " + err.Error())
+				} else {
+					s.TopBarShown = !s.TopBarShown
+				}
 				continue
 			}
 			s.panel = false

@@ -88,7 +88,8 @@ var Themes = func() []*ui.Theme {
 	return out
 }()
 
-func themeByID(id string) *ui.Theme {
+// ThemeByID returns one of Ember's palettes, or Lagoon for an unknown id.
+func ThemeByID(id string) *ui.Theme {
 	for _, t := range Themes {
 		if t.ID == id {
 			return t
@@ -99,7 +100,7 @@ func themeByID(id string) *ui.Theme {
 
 // New returns a screen in the Lagoon palette (SetTheme picks another).
 func New(h Host) *Screen {
-	return &Screen{Host: h, Th: themeByID(DefaultTheme), In: ui.NewInput(), hidden: map[string]bool{}, sel: -1}
+	return &Screen{Host: h, Th: ThemeByID(DefaultTheme), In: ui.NewInput(), hidden: map[string]bool{}, sel: -1}
 }
 
 // SetApps replaces the app list (after a scan) and the hidden set.
@@ -114,7 +115,7 @@ func (s *Screen) SetApps(list []apps.App, hidden []string) {
 
 // SetTheme picks one of Lite Go's palettes by id.
 func (s *Screen) SetTheme(id string) {
-	s.Th = themeByID(id) // an unknown or old choice (Spring Mix) falls back to Lagoon
+	s.Th = ThemeByID(id) // an unknown or old choice (Spring Mix) falls back to Lagoon
 }
 
 // Apps returns the app list.

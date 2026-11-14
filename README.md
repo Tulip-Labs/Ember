@@ -38,7 +38,8 @@ How the pieces fit together:
 3. **Super+D** runs `ember --toggle`, which shows or hides Ember. Only one Ember runs; the toggle talks to it over a small socket in your runtime folder.
 4. When you open an app, Ember asks niri to start it, so the app belongs to niri, not to Ember. Then Ember hides itself.
 5. The windows row comes from niri's IPC (`$NIRI_SOCKET`): Ember asks which windows are open and tells niri which one to focus or close.
-6. While Ember is hidden, its window is closed and its memory is given back. The app list and your settings stay in the background process.
+6. niri's colors follow Ember's theme. When you pick a theme, Ember writes `ember-theme.kdl` (the backdrop between windows, the focus ring around the active window, shadows and the overview) and niri reloads it by itself, so the whole desktop changes together.
+7. While Ember is hidden, its window is closed and its memory is given back. The app list and your settings stay in the background process.
 
 The cards read `/proc` and `/sys` directly. If NetworkManager (`nmcli`) or `iwgetid` is installed, the network card shows the Wi-Fi name. Settings are kept in `~/.config/ember/settings.json`.
 
@@ -50,7 +51,7 @@ Download `ember-linux-x86_64.tar.gz` from the [releases](../../releases). Unpack
 ./install.sh
 ```
 
-The script installs `ember` to `~/.local/bin`, copies `ember.kdl` next to your niri config, and adds `include "ember.kdl"` at the end of `~/.config/niri/config.kdl`. It saves a backup as `config.kdl.before-ember` first. This needs niri 25.11 or newer. Nothing is installed system-wide, so no root is needed. `./install.sh --remove` undoes all of it.
+The script installs `ember` to `~/.local/bin`, copies `ember.kdl` next to your niri config, writes `ember-theme.kdl` with niri's colors for your theme, and adds `include "ember.kdl"` at the end of `~/.config/niri/config.kdl`. It saves a backup as `config.kdl.before-ember` first. This needs niri 25.11 or newer. Nothing is installed system-wide, so no root is needed. `./install.sh --remove` undoes all of it.
 
 To build from source instead, run `./install.sh` inside `linux/`. It needs Go 1.24 or newer and the Gio development files; the commands for each distribution are at the top of the script.
 

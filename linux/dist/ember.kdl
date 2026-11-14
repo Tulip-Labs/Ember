@@ -2,6 +2,10 @@
 // adds `include "ember.kdl"` at the end of config.kdl (niri 25.11 or newer).
 // Settings here win over the same keys earlier in config.kdl.
 
+// niri's colors follow Ember's theme: Ember writes ember-theme.kdl whenever
+// you pick a theme, and niri reloads it by itself.
+include "ember-theme.kdl"
+
 // Ember is the first thing on screen after you sign in.
 spawn-at-startup "ember"
 

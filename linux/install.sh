@@ -15,7 +15,7 @@ LINE='include "ember.kdl"'
 if [ "${1:-}" = "--remove" ]; then
 	"$BIN/ember" --hide 2>/dev/null || true
 	pkill -x ember 2>/dev/null || true
-	rm -f "$BIN/ember" "$NIRI/ember.kdl"
+	rm -f "$BIN/ember" "$NIRI/ember.kdl" "$NIRI/ember-theme.kdl"
 	if [ -f "$NIRI/config.kdl" ]; then
 		grep -vxF "$LINE" "$NIRI/config.kdl" > "$NIRI/config.kdl.tmp" && mv "$NIRI/config.kdl.tmp" "$NIRI/config.kdl"
 	fi
@@ -31,6 +31,7 @@ else
 fi
 mkdir -p "$BIN" "$NIRI"
 install -m 755 build/ember "$BIN/ember"
+"$BIN/ember" --niri-theme # niri's colors for Ember's theme, before ember.kdl includes them
 install -m 644 dist/ember.kdl "$NIRI/ember.kdl"
 if [ ! -f "$NIRI/config.kdl" ]; then
 	echo "No niri config found: niri writes its default one on first start."

@@ -37,7 +37,18 @@ func main() {
 	hide := flag.Bool("hide", false, "hide Ember")
 	daemon := flag.Bool("daemon", false, "start resident but hidden (for spawn-at-startup)")
 	ver := flag.Bool("version", false, "print the version")
+	niriTheme := flag.Bool("niri-theme", false, "write niri's colors for the current theme and exit")
 	flag.Parse()
+	if *niriTheme {
+		r := &resident{}
+		cfg, _ := os.UserConfigDir()
+		r.conf = filepath.Join(cfg, "ember")
+		r.loadSettings()
+		if err := niri.WriteTheme(niri.ConfigDir(), shell.ThemeByID(r.theme)); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
 	if *ver {
 		fmt.Println("Ember", version)
 		return
@@ -118,6 +129,7 @@ func newResident() *resident {
 	cfg, _ := os.UserConfigDir()
 	r.conf = filepath.Join(cfg, "ember")
 	r.loadSettings()
+	r.niriColors()
 	r.rescan()
 	return r
 }
@@ -288,6 +300,23 @@ func (r *resident) SaveTheme(id string) {
 	r.theme = id
 	r.mu.Unlock()
 	r.saveSettings()
+	r.niriColors()
+}
+
+// niriColors gives niri the colors of Ember's theme (focus ring, backdrop,
+// shadows, overview), when Ember is set up in niri's config; niri picks the
+// change up by itself.
+func (r *resident) niriColors() {
+	dir := niri.ConfigDir()
+	if _, err := os.Stat(filepath.Join(dir, "ember.kdl")); err != nil {
+		return
+	}
+	r.mu.Lock()
+	id := r.theme
+	r.mu.Unlock()
+	if err := niri.WriteTheme(dir, shell.ThemeByID(id)); err != nil {
+		log.Println("ember: niri colors:", err)
+	}
 }
 
 func (r *resident) Power(p shell.PowerItem) error {

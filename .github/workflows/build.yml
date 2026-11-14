@@ -180,7 +180,7 @@ jobs:
             sleep 10
             sock=$(ls $XDG_RUNTIME_DIR/wayland-* 2>/dev/null | grep -v lock | head -1)
             WAYLAND_DISPLAY=$(basename "$sock") grim -g "0,0 1440x70" shots/bar-$t.png || { cat /tmp/sway-$t.log; }
-            kill $pid; pkill -x sway; pkill -x waybar; sleep 2
+            kill $pid || true; pkill -x sway || true; pkill -x waybar || true; sleep 2
             tail -40 /tmp/waybar-$t.log > shots/waybar-$t.txt || true
             tail -5 /tmp/sway-$t.log >> shots/waybar-$t.txt
           done

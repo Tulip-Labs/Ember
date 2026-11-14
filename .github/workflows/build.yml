@@ -97,7 +97,7 @@ jobs:
             zypper --non-interactive -q install --allow-unsigned-rpm ./pkg/*.rpm weston procps Mesa-dri
             ;;
           tar)
-            pacman -Syu --noconfirm --needed wayland libxkbcommon libglvnd mesa libx11 libxcursor libxfixes weston procps-ng tar gzip >/dev/null
+            pacman -Syu --noconfirm --needed wayland libxkbcommon libxkbcommon-x11 libglvnd mesa libx11 libxcursor libxfixes weston procps-ng tar gzip >/dev/null
             tar -xzf pkg/Ember-linux-x86_64.tar.gz -C /tmp
             useradd -m tester
             su tester -c "/tmp/Ember-linux-x86_64/install.sh"

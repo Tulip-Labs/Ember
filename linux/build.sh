@@ -48,11 +48,15 @@ deb_depends() {
 
 rpm_depends() {
 	suffix="()(64bit)"
-	objdump -p build/ember | awk '/NEEDED/ {print $2}' | while read -r lib; do echo "      - $lib$suffix"; done
+	{
+		objdump -p build/ember | awk '/NEEDED/ {print $2}'
+		echo libGLESv2.so.2 # opened at run time
+	} | while read -r lib; do echo "      - $lib$suffix"; done
 }
 
 packages() {
-	deps=$(deb_depends)
+	# libGLESv2 is opened at run time (dlopen), so it is not in the list
+	deps="$(deb_depends), libgles2"
 	echo "deb depends: $deps"
 	{
 		cat <<NFPM

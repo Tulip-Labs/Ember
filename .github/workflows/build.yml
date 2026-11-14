@@ -171,15 +171,17 @@ jobs:
           export XDG_RUNTIME_DIR=$(mktemp -d) WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_RENDERER=pixman
           for t in lagoon night peach crocus; do
             bg=$(cd linux && GOFLAGS=-mod=mod go run ./tools/barpreview /tmp/bar-$t $t)
-            printf 'output * resolution 1440x900 bg %s solid_color\nexec waybar -c /tmp/bar-%s/config.jsonc -s /tmp/bar-%s/style.css\n' "$bg" "$t" "$t" > /tmp/sway-$t
+            printf 'output * resolution 1440x900 bg %s solid_color\nexec sh -c "waybar -l debug -c /tmp/bar-%s/config.jsonc -s /tmp/bar-%s/style.css > /tmp/waybar-%s.log 2>&1"\n' "$bg" "$t" "$t" "$t" > /tmp/sway-$t
             sway -c /tmp/sway-$t > /tmp/sway-$t.log 2>&1 &
             pid=$!
-            sleep 6
+            sleep 10
             sock=$(ls $XDG_RUNTIME_DIR/wayland-* 2>/dev/null | grep -v lock | head -1)
             WAYLAND_DISPLAY=$(basename "$sock") grim -g "0,0 1440x70" shots/bar-$t.png || { cat /tmp/sway-$t.log; }
             kill $pid; sleep 1
+            grep -iE "error|warn|critical|fail" /tmp/waybar-$t.log | head -20 > shots/waybar-$t.txt || true
+            tail -5 /tmp/sway-$t.log >> shots/waybar-$t.txt
           done
-          ls -l shots
+          ls -l shots; cat shots/waybar-lagoon.txt
       - name: Push to bar-screens
         run: |
           cd shots

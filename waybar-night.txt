@@ -1,0 +1,41 @@
+[2026-11-14 21:45:18.881] [info] Using CSS file /tmp/bar-night/style.css
+basic_string::_M_create
+[2026-11-14 21:45:18.897] [debug] Output detection done: HEADLESS-1 ()
+[2026-11-14 21:45:18.901] [debug] network: new default route via 10.1.0.1 on if2 metric 100
+[2026-11-14 21:45:18.901] [debug] network: eth0, new addr 10.1.1.170/20
+[2026-11-14 21:45:18.901] [debug] network: eth0, new addr 10.1.1.170/20
+[2026-11-14 21:45:18.902] [warning] No batteries.
+[2026-11-14 21:45:18.909] [debug] GTK widget tree:
+window#waybar.background.top.HEADLESS-1..mode-default:dir(ltr)
+  decoration:dir(ltr)
+  box.horizontal:dir(ltr)
+    box.horizontal.modules-left:dir(ltr)
+      widget:dir(ltr)
+        label#custom-ember:dir(ltr)
+      widget:dir(ltr)
+        box#workspaces.horizontal:dir(ltr)
+      widget:dir(ltr)
+        box.horizontal:dir(ltr)
+          image:dir(ltr)
+          label#window:dir(ltr)
+    box.horizontal.modules-center:dir(ltr)
+      widget:dir(ltr)
+        label#clock:dir(ltr)
+    box.horizontal.modules-right:dir(ltr)
+      widget:dir(ltr)
+        label#network:dir(ltr)
+      widget:dir(ltr)
+        label#pulseaudio:dir(ltr)
+      widget:dir(ltr)
+        label#cpu:dir(ltr)
+      widget:dir(ltr)
+        label#memory:dir(ltr)
+      widget:dir(ltr)
+        label#battery:dir(ltr)
+      widget:dir(ltr)
+        label#custom-power:dir(ltr)
+
+[2026-11-14 21:45:19.011] [warning] Requested height: 38 is less than the minimum height: 39 required by the modules
+[2026-11-14 21:45:19.011] [info] Bar configured (width: 1416, height: 39) for output: HEADLESS-1
+Gdk-Message: 21:45:28.834: Error flushing display: Broken pipe
+2026-11-14 21:45:18 - [main.c:293] Found config * for output HEADLESS-1 ((null))

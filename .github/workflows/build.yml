@@ -166,7 +166,7 @@ jobs:
       - name: sway, Waybar, grim
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq sway waybar grim fontconfig >/dev/null
+          sudo apt-get install -y -qq sway waybar grim fontconfig xwayland >/dev/null
           mkdir -p ~/.local/share/fonts && cp linux/assets/fonts/Nunito-*.ttf ~/.local/share/fonts/ && fc-cache -f
       - name: Screenshots
         run: |
@@ -181,7 +181,7 @@ jobs:
             sock=$(ls $XDG_RUNTIME_DIR/wayland-* 2>/dev/null | grep -v lock | head -1)
             WAYLAND_DISPLAY=$(basename "$sock") grim -g "0,0 1440x70" shots/bar-$t.png || { cat /tmp/sway-$t.log; }
             kill $pid; sleep 1
-            grep -iE "error|warn|critical|fail" /tmp/waybar-$t.log | head -20 > shots/waybar-$t.txt || true
+            tail -40 /tmp/waybar-$t.log > shots/waybar-$t.txt || true
             tail -5 /tmp/sway-$t.log >> shots/waybar-$t.txt
           done
           ls -l shots; cat shots/waybar-lagoon.txt

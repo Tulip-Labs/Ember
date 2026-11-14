@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"ember/bar"
 	"ember/shell"
@@ -17,7 +18,9 @@ func main() {
 	dir, id := os.Args[1], os.Args[2]
 	th := shell.ThemeByID(id)
 	os.MkdirAll(dir, 0o755)
-	os.WriteFile(filepath.Join(dir, "config.jsonc"), []byte(bar.Config()), 0o644)
+	// the screenshots run on sway, whose Waybar has sway's modules in place of niri's
+	cfg := strings.ReplaceAll(bar.Config(), `"niri/`, `"sway/`)
+	os.WriteFile(filepath.Join(dir, "config.jsonc"), []byte(cfg), 0o644)
 	os.WriteFile(filepath.Join(dir, "style.css"), []byte(bar.Style(th)), 0o644)
 	bg := th.G5
 	if th.Grad != nil {

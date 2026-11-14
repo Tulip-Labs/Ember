@@ -31,6 +31,8 @@ type Host interface {
 	// into the new version).
 	SetUpdates(on bool)
 	UpdateNow()
+	// SetBrightness sets the screen's backlight, 1..100 percent.
+	SetBrightness(percent int)
 }
 
 // PowerItem is one row of the power panel.
@@ -80,9 +82,12 @@ type Screen struct {
 	keynav bool
 	panel  bool
 	wheel  float32
-	toast  string
-	toastT float64
-	u      ui.Ui
+	// brightness: dragging the slider, and until when the reading waits
+	dragBright bool
+	brightHold float64
+	toast      string
+	toastT     float64
+	u          ui.Ui
 }
 
 // DefaultTheme is the palette Ember starts in.
@@ -219,10 +224,7 @@ func (s *Screen) layout(w, h float32) layout {
 		l.mg = 28
 	}
 	total := w - 2*l.mg
-	n := 4
-	if s.Stats.Battery >= 0 {
-		n = 5
-	}
+	n := len(s.cards())
 	gap := float32(14)
 	cw := min(max(total*0.28, 260), 500)
 	if each := (total - cw - 16 - float32(n-1)*gap) / float32(n); each < 118 {
@@ -373,7 +375,9 @@ func (s *Screen) Frame(g ui.Gfx, w, h float32) {
 	s.Redraw = false
 	l := s.layout(w, h)
 	s.keys(l)
-	if s.In.WheelY != 0 && !s.panel {
+	if s.In.WheelY != 0 && !s.panel && s.brightWheel(l) {
+		// the wheel went to the brightness card
+	} else if s.In.WheelY != 0 && !s.panel {
 		s.wheel += s.In.WheelY
 		for s.wheel >= 1 {
 			s.wheel--
@@ -457,24 +461,93 @@ func pct(a, b float64) int {
 	return int(a*100/b + 0.5)
 }
 
+// The dashboard's cards, in order; battery and brightness only where the
+// machine has them.
+const (
+	cardCPU = iota
+	cardMemory
+	cardNetwork
+	cardDisk
+	cardBattery
+	cardBrightness
+)
+
+func (s *Screen) cards() []int {
+	c := []int{cardCPU, cardMemory, cardNetwork, cardDisk}
+	if s.Stats.Battery >= 0 {
+		c = append(c, cardBattery)
+	}
+	if s.Stats.Brightness >= 0 {
+		c = append(c, cardBrightness)
+	}
+	return c
+}
+
+// brightRect is the brightness card, if there is one.
+func (s *Screen) brightRect(l layout) (ui.Rect, bool) {
+	for i, k := range s.cards() {
+		if k == cardBrightness && i < len(l.stats) {
+			return l.stats[i], true
+		}
+	}
+	return ui.Rect{}, false
+}
+
+// setBright changes the screen brightness (0..100); the host applies it.
+func (s *Screen) setBright(p int) {
+	p = min(100, max(1, p)) // never fully dark: the screen must stay usable
+	if p != s.Stats.Brightness {
+		s.Stats.Brightness = p
+		s.Host.SetBrightness(p)
+	}
+	s.brightHold = s.In.Now + 1.5 // the reading catches up after a moment
+}
+
+func (s *Screen) brightWheel(l layout) bool {
+	r, ok := s.brightRect(l)
+	if !ok || !s.u.Over(r) {
+		return false
+	}
+	step := 5
+	if s.In.WheelY < 0 {
+		step = -5
+	}
+	s.setBright(s.Stats.Brightness + step)
+	return true
+}
+
+// SetStats takes a new reading, keeping the brightness the reader is setting.
+func (s *Screen) SetStats(st sysinfo.Stats) {
+	if s.In.Now < s.brightHold || s.dragBright {
+		st.Brightness = s.Stats.Brightness
+	}
+	s.Stats = st
+}
+
 func (s *Screen) stat(g ui.Gfx, i int, r ui.Rect) {
 	th, st := s.Th, s.Stats
 	s.card(r, 24, false)
-	labels := []string{"CPU", "MEMORY", "NETWORK", "DISK", "BATTERY"}
+	kind := s.cards()[i]
+	labels := []string{"CPU", "MEMORY", "NETWORK", "DISK", "BATTERY", "BRIGHTNESS"}
 	var val, capt string
 	var frac float64
 	glyph := GCPU
-	switch i {
-	case 0:
+	switch kind {
+	case cardBrightness:
+		glyph = GSun
+		val = fmt.Sprintf("%d%%", st.Brightness)
+		capt = "Drag or scroll"
+		frac = float64(st.Brightness) / 100
+	case cardCPU:
 		val, capt, frac = fmt.Sprintf("%d%%", int(st.CPU+0.5)), "Processor load", st.CPU/100
-	case 1:
+	case cardMemory:
 		glyph = GMemory
 		val = fmt.Sprintf("%.1f / %.1f GB", st.MemUsedGB, st.MemTotGB)
 		capt = fmt.Sprintf("%d%% in use", pct(st.MemUsedGB, st.MemTotGB))
 		if st.MemTotGB > 0 {
 			frac = st.MemUsedGB / st.MemTotGB
 		}
-	case 2:
+	case cardNetwork:
 		n := st.Net
 		switch {
 		case n.State == 2:
@@ -490,7 +563,7 @@ func (s *Screen) stat(g ui.Gfx, i int, r ui.Rect) {
 		if n.State == 2 {
 			frac = 1
 		}
-	case 3:
+	case cardDisk:
 		glyph = GDisk
 		val = fmt.Sprintf("%.0f GB free", st.DiskFreeGB)
 		capt = fmt.Sprintf("%d%% used", pct(st.DiskTotGB-st.DiskFreeGB, st.DiskTotGB))
@@ -508,7 +581,7 @@ func (s *Screen) stat(g ui.Gfx, i int, r ui.Rect) {
 	}
 	const pad, chipR = 16, 17
 	ccx, ccy := r.X+pad+chipR, r.Y+pad+chipR
-	ui.FillOval(g, ui.RectAround(ccx, ccy, 2*chipR, 2*chipR), s.tints()[i%5])
+	ui.FillOval(g, ui.RectAround(ccx, ccy, 2*chipR, 2*chipR), s.tints()[kind%5])
 	DrawGlyph(g, glyph, ccx, ccy, 20, th.Ink)
 	if glyph == GBattery && st.Battery > 0 {
 		k := float32(20) / 24
@@ -520,7 +593,7 @@ func (s *Screen) stat(g ui.Gfx, i int, r ui.Rect) {
 		ui.FillRound(g, ui.Rect{X: bx + 4.4*k, Y: by + 9.8*k, W: max(2, 12.6*k*float32(st.Battery)/100), H: 5 * k}, 1.2, fill)
 	}
 	lx := ccx + chipR + 10
-	ui.TextFit(g, labels[i], lx, ui.Mid(g, r.Y+pad, 2*chipR, ui.FSmallBold), ui.FSmallBold, th.Ink2, r.R()-pad-lx)
+	ui.TextFit(g, labels[kind], lx, ui.Mid(g, r.Y+pad, 2*chipR, ui.FSmallBold), ui.FSmallBold, th.Ink2, r.R()-pad-lx)
 	ui.TextFit(g, val, r.X+pad, r.Y+78, ui.Font{Size: 18, Bold: true}, th.Ink, r.W-2*pad)
 	ui.TextFit(g, capt, r.X+pad, r.Y+98, ui.FSmall, th.Ink2, r.W-2*pad)
 	bar := ui.Rect{X: r.X + pad, Y: r.B() - 24, W: r.W - 2*pad, H: 6}
@@ -528,6 +601,34 @@ func (s *Screen) stat(g ui.Gfx, i int, r ui.Rect) {
 	if f := float32(min(1, max(0, frac))); f > 0 {
 		ui.FillRound(g, ui.Rect{X: bar.X, Y: bar.Y, W: max(6, bar.W*f), H: bar.H}, 3, th.Deep)
 	}
+	if kind == cardBrightness {
+		s.brightSlider(g, r, bar)
+	}
+}
+
+// brightSlider makes the brightness card's bar a slider: press anywhere on
+// the card's lower half and drag.
+func (s *Screen) brightSlider(g ui.Gfx, card, bar ui.Rect) {
+	th, in := s.Th, s.In
+	hit := ui.Rect{X: card.X, Y: bar.Y - 26, W: card.W, H: card.B() - bar.Y + 26}
+	if in.Pressed && s.u.Over(hit) && !s.panel {
+		s.dragBright = true
+	}
+	if s.dragBright {
+		if in.Down {
+			s.setBright(int((in.MX-bar.X)/bar.W*100 + 0.5))
+		} else {
+			s.dragBright = false
+		}
+	}
+	f := float32(s.Stats.Brightness) / 100
+	kx := bar.X + bar.W*f
+	knob := ui.RectAround(kx, bar.CY(), 16, 16)
+	if s.u.Hover(hit) || s.dragBright {
+		knob = ui.RectAround(kx, bar.CY(), 19, 19)
+	}
+	ui.FillOval(g, knob, ui.White)
+	ui.StrokeOval(g, knob, 2, th.Deep)
 }
 
 func (s *Screen) chip(g ui.Gfx, id ui.ID, r ui.Rect, glyph Glyph, label string) bool {
@@ -583,7 +684,7 @@ func (s *Screen) strip(g ui.Gfx, l layout) {
 // themes draws Lite Go's palettes as dots before the Files chip (click one
 // to switch; the choice is kept) and returns where the dots start.
 func (s *Screen) themes(g ui.Gfx, l layout) float32 {
-	const d, gap = 18, 8
+	const d, gap = 15, 6
 	n := len(Themes)
 	x := l.files.X - 18 - float32(n)*(d+gap) + gap
 	cy := l.strip.CY()

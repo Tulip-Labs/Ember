@@ -12,6 +12,7 @@ type Stats struct {
 	Battery               int // -1 when there is none
 	Charging              bool
 	OwnMB                 float64 // Ember's own memory
+	Brightness            int     // the backlight, 0..100; -1 when there is none
 }
 
 // Net is the network card: 0 none, 1 Wi-Fi, 2 wired.

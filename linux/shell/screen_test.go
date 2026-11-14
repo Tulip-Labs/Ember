@@ -25,6 +25,7 @@ type fakeHost struct {
 	theme     string
 	updates   bool
 	updateNow int
+	bright    []int
 }
 
 func (h *fakeHost) Launch(a apps.App) error {
@@ -43,6 +44,7 @@ func (h *fakeHost) SaveHidden(ids []string)     { h.hidden = ids }
 func (h *fakeHost) SaveTheme(id string)         { h.theme = id }
 func (h *fakeHost) SetUpdates(on bool)          { h.updates = on }
 func (h *fakeHost) UpdateNow()                  { h.updateNow++ }
+func (h *fakeHost) SetBrightness(p int)         { h.bright = append(h.bright, p) }
 
 var names = []string{"Archivos", "Blender", "Calculator", "Discord", "Firefox", "foot", "GIMP", "Inkscape",
 	"Kdenlive", "Krita", "Lite Go", "LibreOffice Writer", "LibreOffice Calc", "Obsidian", "OBS Studio",
@@ -57,7 +59,7 @@ func sample(t *testing.T) (*Screen, *fakeHost) {
 	}
 	s.SetApps(list, []string{"Steam.desktop"})
 	s.Now = time.Date(2026, 11, 14, 9, 41, 0, 0, time.UTC)
-	s.Stats = sysinfo.Stats{CPU: 23, MemUsedGB: 5.4, MemTotGB: 15.5, DiskFreeGB: 182, DiskTotGB: 476, Battery: 76,
+	s.Stats = sysinfo.Stats{Brightness: 60, CPU: 23, MemUsedGB: 5.4, MemTotGB: 15.5, DiskFreeGB: 182, DiskTotGB: 476, Battery: 76,
 		OwnMB: 21.4, Net: sysinfo.Net{State: 1, Name: "Tulip Labs", Signal: 82, HasWifi: true}}
 	s.Niri = true
 	s.Wins = []niri.Window{
@@ -204,15 +206,15 @@ func TestThemes(t *testing.T) {
 	if s.Th.ID != "lagoon" {
 		t.Fatalf("spring kept: %s", s.Th.ID)
 	}
-	for _, id := range []string{"peach", "night", "crocus"} {
+	for _, id := range []string{"peach", "night", "crocus", "glow", "sunset", "terracotta", "midnight", "embernight", "aurora", "abyss"} {
 		s.SetTheme(id)
 		shot(t, s, 1440, 900, "ember-"+id)
 	}
 	// clicking a dot switches the palette and keeps the choice
 	l := s.layout(1440, 900)
 	n := len(Themes)
-	x := l.files.X - 18 - float32(n)*26 + 8
-	click(t, s, x+1*26+9, l.strip.CY(), 1440, 900)
+	x := l.files.X - 18 - float32(n)*21 + 6
+	click(t, s, x+1*21+7, l.strip.CY(), 1440, 900)
 	if s.Th.ID != Themes[1].ID || h.theme != Themes[1].ID {
 		t.Fatalf("theme %s, saved %q", s.Th.ID, h.theme)
 	}
@@ -238,5 +240,47 @@ func TestUpdateNotice(t *testing.T) {
 	}
 	if s.UpdatesOn || h.updates {
 		t.Fatal("the switch did not turn updates off")
+	}
+}
+
+func TestBrightness(t *testing.T) {
+	s, h := sample(t)
+	shot(t, s, 1440, 900, "ember-bright")
+	l := s.layout(1440, 900)
+	r, ok := s.brightRect(l)
+	if !ok {
+		t.Fatal("no brightness card")
+	}
+	// press near the left end of the bar, drag to the right end
+	at(s, r.X+16, r.B()-21)
+	s.In.Pressed, s.In.Down = true, true
+	shot(t, s, 1440, 900, "")
+	if s.Stats.Brightness > 5 {
+		t.Fatalf("press: %d", s.Stats.Brightness)
+	}
+	at(s, r.R()-16, r.B()-21)
+	shot(t, s, 1440, 900, "")
+	s.In.Released, s.In.Down = true, false
+	shot(t, s, 1440, 900, "")
+	if s.Stats.Brightness != 100 || h.bright[len(h.bright)-1] != 100 {
+		t.Fatalf("drag: %d %v", s.Stats.Brightness, h.bright)
+	}
+	// the wheel over the card goes 5% at a time, and not to the app grid
+	at(s, r.CX(), r.CY())
+	s.In.WheelY = -1
+	shot(t, s, 1440, 900, "")
+	if s.Stats.Brightness != 95 {
+		t.Fatalf("wheel: %d", s.Stats.Brightness)
+	}
+	// a reading taken while the reader is changing it does not jump back
+	s.SetStats(sysinfo.Stats{Brightness: 40, Battery: -1})
+	if s.Stats.Brightness != 95 {
+		t.Fatalf("reading overrode the slider: %d", s.Stats.Brightness)
+	}
+	// no backlight: no card
+	s.In.Now += 10
+	s.SetStats(sysinfo.Stats{Brightness: -1, Battery: -1})
+	if _, ok := s.brightRect(s.layout(1440, 900)); ok {
+		t.Fatal("a brightness card without a backlight")
 	}
 }

@@ -26,6 +26,7 @@ func (r *Reader) Fast() Stats {
 	s.CPU = r.cpu()
 	s.MemUsedGB, s.MemTotGB = r.mem()
 	s.OwnMB = r.own()
+	s.Brightness = r.brightness()
 	if r.slowAt%5 == 0 {
 		s.DiskFreeGB, s.DiskTotGB = r.disk()
 		s.Battery, s.Charging = r.battery()
@@ -224,3 +225,39 @@ func ssid(ifc, root string) string {
 }
 
 func clamp(v, lo, hi float64) float64 { return max(lo, min(hi, v)) }
+
+// Backlight is the screen's backlight: its name under /sys/class/backlight
+// and its highest value. Laptops can have more than one; the firmware's is
+// the one that works best, then the platform's, then a raw one.
+func (r *Reader) Backlight() (name string, max int) {
+	ms, _ := filepath.Glob(r.path("sys/class/backlight/*"))
+	best := -1
+	rank := map[string]int{"firmware": 3, "platform": 2, "raw": 1}
+	for _, d := range ms {
+		m, err := strconv.Atoi(strings.TrimSpace(string(readFile(d, "max_brightness"))))
+		if err != nil || m <= 0 {
+			continue
+		}
+		k := rank[strings.TrimSpace(string(readFile(d, "type")))]
+		if k > best {
+			best, name, max = k, filepath.Base(d), m
+		}
+	}
+	return name, max
+}
+
+func (r *Reader) brightness() int {
+	name, m := r.Backlight()
+	if name == "" {
+		return -1
+	}
+	d := r.path("sys/class/backlight/" + name)
+	v, err := strconv.Atoi(strings.TrimSpace(string(readFile(d, "actual_brightness"))))
+	if err != nil {
+		v, err = strconv.Atoi(strings.TrimSpace(string(readFile(d, "brightness"))))
+		if err != nil {
+			return -1
+		}
+	}
+	return int(clamp(float64(v)*100/float64(m)+0.5, 0, 100))
+}

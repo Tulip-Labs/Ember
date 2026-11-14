@@ -36,7 +36,7 @@ const version = "1.0.1"
 func main() {
 	toggle := flag.Bool("toggle", false, "show Ember, or hide it when it is on screen")
 	hide := flag.Bool("hide", false, "hide Ember")
-	daemon := flag.Bool("daemon", false, "start resident but hidden (for spawn-at-startup)")
+	daemon := flag.Bool("daemon", false, "does nothing (Ember no longer stays in the background)")
 	ver := flag.Bool("version", false, "print the version")
 	niriTheme := flag.Bool("niri-theme", false, "write niri's colors for the current theme and exit")
 	setupNiri := flag.Bool("setup-niri", false, "add Ember to niri's settings (Super+D, start at sign-in) and exit")
@@ -81,17 +81,18 @@ func main() {
 	if send(sock, cmd) == nil {
 		return
 	}
-	if cmd == "hide" {
-		return
+	if cmd == "hide" || cmd == "daemon" {
+		return // Ember only runs while it is on screen
 	}
+	// a small heap: collect early, and hard above 40 MB
+	debug.SetGCPercent(25)
+	debug.SetMemoryLimit(40 << 20)
 	app.ID = "ember" // the Wayland app id niri's window rule matches
 	r := newResident()
 	if err := r.listen(sock); err != nil {
 		log.Fatal(err)
 	}
-	if cmd != "daemon" {
-		r.show()
-	}
+	r.show()
 	app.Main()
 }
 
@@ -137,6 +138,8 @@ type resident struct {
 	// startNote is shown once, the first time Ember opens (niri setup)
 	startNote string
 	openPower bool // the power panel opens with the next frame
+	listener  net.Listener
+	brightCh  chan int
 	list      []apps.App
 	stamp     int64
 	dirs      []string
@@ -214,6 +217,7 @@ func (r *resident) listen(path string) error {
 		return err
 	}
 	os.Chmod(path, 0o600)
+	r.listener = l
 	go func() {
 		for {
 			c, err := l.Accept()
@@ -273,6 +277,9 @@ func (r *resident) hide() {
 }
 
 // closed is called by the window once it is gone.
+// closed is called once the window is gone. Ember then quits, so it uses no
+// memory at all while you are in your apps; Super+D starts it again in a
+// moment. An update that is downloading finishes first.
 func (r *resident) closed(w *window) {
 	r.mu.Lock()
 	if r.win == w {
@@ -280,6 +287,27 @@ func (r *resident) closed(w *window) {
 	}
 	r.mu.Unlock()
 	debug.FreeOSMemory()
+	for {
+		r.mu.Lock()
+		busy, shown := r.upd.busy, r.win != nil
+		r.mu.Unlock()
+		if shown {
+			return // shown again while the update finished
+		}
+		if !busy {
+			break
+		}
+		time.Sleep(time.Second)
+	}
+	r.quit()
+}
+
+func (r *resident) quit() {
+	if r.listener != nil {
+		r.listener.Close()
+	}
+	os.Remove(socketPath())
+	os.Exit(0)
 }
 
 // ---- shell.Host ----

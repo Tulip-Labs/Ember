@@ -34,7 +34,7 @@ func (r *resident) updateLoop() {
 	if !k.CanSelf() {
 		return
 	}
-	time.Sleep(45 * time.Second) // not while the session is starting
+	time.Sleep(3 * time.Second) // once Ember is on screen
 	for {
 		r.checkUpdate(false)
 		time.Sleep(30 * time.Minute)

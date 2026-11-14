@@ -98,7 +98,7 @@ func (w *window) loop() error {
 	s.SetTheme(r.theme)
 	r.mu.Unlock()
 	s.Niri = r.niri != nil
-	s.Stats = r.stats.Fast()
+	s.SetStats(r.stats.Fast())
 	r.stats.Slow()
 	wins := func() {
 		if r.niri == nil {
@@ -131,7 +131,7 @@ func (w *window) loop() error {
 			now := time.Now()
 			if now.Sub(last) >= 900*time.Millisecond {
 				last = now
-				s.Stats = r.stats.Fast()
+				s.SetStats(r.stats.Fast())
 				wins()
 			}
 			if now.Sub(lastScan) >= 5*time.Second {

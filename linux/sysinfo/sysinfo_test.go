@@ -28,11 +28,20 @@ func TestFakeTree(t *testing.T) {
 	put(t, root, "sys/class/net/wlan0/operstate", "up\n")
 	put(t, root, "sys/class/net/wlan0/wireless/x", "")
 	put(t, root, "proc/net/wireless", "Inter-| sta-|   Quality\n face | tus | link level noise\nwlan0: 0000   49.  -61.  -256\n")
+	put(t, root, "sys/class/backlight/acpi_video0/type", "firmware\n")
+	put(t, root, "sys/class/backlight/acpi_video0/max_brightness", "100\n")
+	put(t, root, "sys/class/backlight/acpi_video0/actual_brightness", "30\n")
+	put(t, root, "sys/class/backlight/intel_backlight/type", "raw\n")
+	put(t, root, "sys/class/backlight/intel_backlight/max_brightness", "96000\n")
+	put(t, root, "sys/class/backlight/intel_backlight/actual_brightness", "48000\n")
 	os.MkdirAll(filepath.Join(root, "home"), 0o755)
 	r := &Reader{Root: root, Home: "/home"}
 	s := r.Fast()
 	if s.MemTotGB != 8 || s.MemUsedGB != 6 {
 		t.Errorf("memory %v / %v", s.MemUsedGB, s.MemTotGB)
+	}
+	if s.Brightness != 30 {
+		t.Errorf("brightness %d (the firmware backlight)", s.Brightness)
 	}
 	if s.Battery != 64 || s.Charging {
 		t.Errorf("battery %d %v", s.Battery, s.Charging)

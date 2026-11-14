@@ -15,17 +15,19 @@ Windows 3.1 · Linux 1.0 on [niri](https://github.com/YaLTeR/niri) · GPL-3.0
 
 Ember replaces the desktop you sign in to with one screen:
 
-- **Dashboard.** The date and time, then cards for processor, memory, network, disk and battery, each with a usage bar.
+- **Dashboard.** The date and time, then cards for processor, memory, network, disk and battery, each with a usage bar, and a **brightness** card: drag its slider or scroll over it.
 - **Apps.** Every installed app as a tile. Start typing to search, press Enter to open the top result, or move with the arrow keys.
 - **Hide apps.** Right-click an app to hide it. Type `hidden` to see hidden apps; right-click one to bring it back.
 - **Open windows** (Linux). Every window niri manages, in a row. Click one to go to it, or right-click it to close it.
-- **Themes.** The palettes of Lite Go: Lagoon (the default), Crocus, Tulip, Sakura, Meadow, Peach Sky, Mint Lilac, Sorbet, Classic and Night. Click a dot in the search bar to switch; Ember keeps your choice.
+- **Themes.** Seventeen palettes. Light: Lagoon (the default), Crocus, Tulip, Sakura, Meadow, Peach Sky, Mint Lilac, Sorbet and Classic. Warm and strong: Ember Glow, Sunset and Terracotta. Night: Night, Midnight, Ember Night, Aurora and Abyss. Click a dot in the search bar to switch; Ember keeps your choice, and niri and the top bar follow it.
+- **The Ember bar.** Waybar, the bar at the top of niri, gets Ember's look: glass pills in the theme's colors, words instead of icons, niri's workspaces and window title, an **Ember** button and a **Power** button. `ember --remove-bar` puts your old bar back.
 - **Power panel.** Lock, sleep, sign out, restart, shut down, turn the screens off, automatic updates, exit Ember.
 
 | | |
 |---|---|
 | ![Search](docs/ember-search.png) | ![Power panel](docs/ember-power.png) |
 | ![Peach Sky theme](docs/ember-peach.png) | ![Night theme](docs/ember-night.png) |
+| ![Sunset theme](docs/ember-sunset.png) | ![Midnight theme](docs/ember-midnight.png) |
 
 ## Ember for Linux
 
@@ -39,7 +41,7 @@ How the pieces fit together:
 4. When you open an app, Ember asks niri to start it, so the app belongs to niri, not to Ember. Then Ember hides itself.
 5. The windows row comes from niri's IPC (`$NIRI_SOCKET`): Ember asks which windows are open and tells niri which one to focus or close.
 6. niri's colors follow Ember's theme. When you pick a theme, Ember writes `ember-theme.kdl` (the backdrop between windows, the focus ring around the active window, shadows and the overview) and niri reloads it by itself, so the whole desktop changes together.
-7. While Ember is hidden, its window is closed and its memory is given back. The app list and your settings stay in the background process.
+7. When Ember hides, it quits: it uses **no memory at all** while you are in your apps, and Super+D starts it again in a moment. (While it is on screen, most of what it uses is the graphics driver every window shares, plus the screen-sized picture itself.)
 
 The cards read `/proc` and `/sys` directly. If NetworkManager (`nmcli`) or `iwgetid` is installed, the network card shows the Wi-Fi name. Settings are kept in `~/.config/ember/settings.json`.
 

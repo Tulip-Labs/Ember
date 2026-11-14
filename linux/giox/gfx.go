@@ -48,12 +48,12 @@ type measKey struct {
 var (
 	faceRegular = giofont.Font{Typeface: "Nunito"}
 	faceBold    = giofont.Font{Typeface: "Nunito", Weight: giofont.Bold}
-	faceMono    = giofont.Font{Typeface: "DejaVu Sans Mono"}
+	faceMono    = faceRegular // Ember draws no code: the monospaced font is not loaded
 )
 
 func newShaper() *text.Shaper {
 	var faces []giofont.FontFace
-	for _, b := range [][]byte{assets.NunitoRegular, assets.NunitoBold, assets.Mono} {
+	for _, b := range [][]byte{assets.NunitoRegular, assets.NunitoBold} {
 		fs, err := opentype.ParseCollection(b)
 		if err != nil {
 			panic(err)

@@ -146,6 +146,10 @@ func (w *window) loop() error {
 			r.mu.Lock()
 			s.UpdatesOn = r.upd.on && r.upd.kind.CanSelf()
 			s.Notice, s.NoticeAction = r.upd.notice, r.upd.action
+			if r.openPower {
+				s.OpenPower()
+				r.openPower = false
+			}
 			if r.startNote != "" {
 				s.Toast(r.startNote)
 				r.startNote = ""

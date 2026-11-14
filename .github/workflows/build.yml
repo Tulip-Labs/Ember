@@ -146,3 +146,45 @@ jobs:
         run: |
           nix build -L .#default
           ls -l result/bin
+
+  # Screenshots of the Ember bar (Waybar with Ember's style) in a few themes,
+  # on a headless sway, pushed to the bar-screens branch.
+  bar:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache: false
+      - name: sway, Waybar, grim
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq sway waybar grim fontconfig >/dev/null
+          mkdir -p ~/.local/share/fonts && cp linux/assets/fonts/Nunito-*.ttf ~/.local/share/fonts/ && fc-cache -f
+      - name: Screenshots
+        run: |
+          mkdir -p shots
+          export XDG_RUNTIME_DIR=$(mktemp -d) WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_RENDERER=pixman
+          for t in lagoon night peach crocus; do
+            bg=$(cd linux && GOFLAGS=-mod=mod go run ./tools/barpreview /tmp/bar-$t $t)
+            printf 'output * resolution 1440x900 bg %s solid_color\nexec waybar -c /tmp/bar-%s/config.jsonc -s /tmp/bar-%s/style.css\n' "$bg" "$t" "$t" > /tmp/sway-$t
+            sway -c /tmp/sway-$t > /tmp/sway-$t.log 2>&1 &
+            pid=$!
+            sleep 6
+            sock=$(ls $XDG_RUNTIME_DIR/wayland-* 2>/dev/null | grep -v lock | head -1)
+            WAYLAND_DISPLAY=$(basename "$sock") grim -g "0,0 1440x70" shots/bar-$t.png || { cat /tmp/sway-$t.log; }
+            kill $pid; sleep 1
+          done
+          ls -l shots
+      - name: Push to bar-screens
+        run: |
+          cd shots
+          git init -q -b bar-screens
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A && git commit -q -m "Ember bar screenshots"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" bar-screens

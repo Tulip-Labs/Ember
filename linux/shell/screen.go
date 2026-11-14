@@ -138,6 +138,9 @@ func (s *Screen) Reset() {
 	s.rebuild()
 }
 
+// OpenPower opens the power panel (ember --power, the bar's Power button).
+func (s *Screen) OpenPower() { s.panel = true }
+
 // Toast shows a short note in the footer.
 func (s *Screen) Toast(t string) { s.toast, s.toastT = t, s.In.Now+4 }
 

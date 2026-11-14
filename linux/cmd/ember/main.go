@@ -25,12 +25,13 @@ import (
 	"gioui.org/app"
 
 	"ember/apps"
+	"ember/bar"
 	"ember/niri"
 	"ember/shell"
 	"ember/sysinfo"
 )
 
-const version = "1.0.0"
+const version = "1.0.1"
 
 func main() {
 	toggle := flag.Bool("toggle", false, "show Ember, or hide it when it is on screen")
@@ -40,9 +41,15 @@ func main() {
 	niriTheme := flag.Bool("niri-theme", false, "write niri's colors for the current theme and exit")
 	setupNiri := flag.Bool("setup-niri", false, "add Ember to niri's settings (Super+D, start at sign-in) and exit")
 	removeNiri := flag.Bool("remove-niri", false, "take Ember out of niri's settings and exit")
+	setupBar := flag.Bool("setup-bar", false, "give Waybar Ember's look (the Ember bar) and exit")
+	removeBar := flag.Bool("remove-bar", false, "put Waybar's own config back and exit")
+	power := flag.Bool("power", false, "show Ember with the power panel open")
 	flag.Parse()
 	if *setupNiri || *removeNiri {
 		os.Exit(niriSetupCmd(*removeNiri))
+	}
+	if *setupBar || *removeBar {
+		os.Exit(barCmd(*removeBar))
 	}
 	if *niriTheme {
 		r := &resident{}
@@ -66,6 +73,8 @@ func main() {
 		cmd = "hide"
 	case *daemon:
 		cmd = "daemon"
+	case *power:
+		cmd = "power"
 	}
 	sock := socketPath()
 	// a resident Ember is already there: hand it the command and leave
@@ -127,6 +136,7 @@ type resident struct {
 	upd    updates
 	// startNote is shown once, the first time Ember opens (niri setup)
 	startNote string
+	openPower bool // the power panel opens with the next frame
 	list      []apps.App
 	stamp     int64
 	dirs      []string
@@ -139,6 +149,7 @@ func newResident() *resident {
 	r.conf = filepath.Join(cfg, "ember")
 	r.loadSettings()
 	r.autoSetupNiri()
+	r.autoSetupBar()
 	r.niriColors()
 	r.rescan()
 	go r.updateLoop()
@@ -221,6 +232,11 @@ func (r *resident) serve(c net.Conn) {
 	line, _ := bufio.NewReader(c).ReadString('\n')
 	switch strings.TrimSpace(line) {
 	case "show":
+		r.show()
+	case "power":
+		r.mu.Lock()
+		r.openPower = true
+		r.mu.Unlock()
 		r.show()
 	case "hide":
 		r.hide()
@@ -333,6 +349,9 @@ func (r *resident) niriColors() {
 	r.mu.Unlock()
 	if err := niri.WriteTheme(dir, shell.ThemeByID(id)); err != nil {
 		log.Println("ember: niri colors:", err)
+	}
+	if ok, _ := bar.Restyle(bar.Dir(), shell.ThemeByID(id)); ok {
+		bar.Reload()
 	}
 }
 

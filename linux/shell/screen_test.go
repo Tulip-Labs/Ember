@@ -15,14 +15,16 @@ import (
 )
 
 type fakeHost struct {
-	launched []string
-	focused  []uint64
-	closed   []uint64
-	ran      [][]string
-	hidden   []string
-	power    []string
-	hides    int
-	theme    string
+	launched  []string
+	focused   []uint64
+	closed    []uint64
+	ran       [][]string
+	hidden    []string
+	power     []string
+	hides     int
+	theme     string
+	updates   bool
+	updateNow int
 }
 
 func (h *fakeHost) Launch(a apps.App) error {
@@ -39,6 +41,8 @@ func (h *fakeHost) Hide()                       { h.hides++ }
 func (h *fakeHost) Power(p PowerItem) error     { h.power = append(h.power, p.ID); return nil }
 func (h *fakeHost) SaveHidden(ids []string)     { h.hidden = ids }
 func (h *fakeHost) SaveTheme(id string)         { h.theme = id }
+func (h *fakeHost) SetUpdates(on bool)          { h.updates = on }
+func (h *fakeHost) UpdateNow()                  { h.updateNow++ }
 
 var names = []string{"Archivos", "Blender", "Calculator", "Discord", "Firefox", "foot", "GIMP", "Inkscape",
 	"Kdenlive", "Krita", "Lite Go", "LibreOffice Writer", "LibreOffice Calc", "Obsidian", "OBS Studio",
@@ -211,5 +215,28 @@ func TestThemes(t *testing.T) {
 	click(t, s, x+1*26+9, l.strip.CY(), 1440, 900)
 	if s.Th.ID != Themes[1].ID || h.theme != Themes[1].ID {
 		t.Fatalf("theme %s, saved %q", s.Th.ID, h.theme)
+	}
+}
+
+func TestUpdateNotice(t *testing.T) {
+	s, h := sample(t)
+	s.UpdatesOn = true
+	s.Notice, s.NoticeAction = "Ember 1.1.0 is ready", "Install"
+	shot(t, s, 1440, 900, "ember-update")
+	l := s.layout(1440, 900)
+	click(t, s, l.power.X-40, l.power.CY(), 1440, 900)
+	if h.updateNow != 1 {
+		t.Fatalf("the notice's button: %d", h.updateNow)
+	}
+	// the power panel's switch
+	click(t, s, l.power.CX(), l.power.CY(), 1440, 900)
+	for i, it := range Power {
+		if it.ID == "updates" {
+			r := l.powerRow(i)
+			click(t, s, r.CX(), r.CY(), 1440, 900)
+		}
+	}
+	if s.UpdatesOn || h.updates {
+		t.Fatal("the switch did not turn updates off")
 	}
 }

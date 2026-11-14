@@ -1,4 +1,4 @@
-// Ember on niri. install.sh copies this file next to your niri config and
+// Ember on niri. Ember copies this file next to your niri config and
 // adds `include "ember.kdl"` at the end of config.kdl (niri 25.11 or newer).
 // Settings here win over the same keys earlier in config.kdl.
 

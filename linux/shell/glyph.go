@@ -26,6 +26,7 @@ const (
 	GExit
 	GWindows
 	GScreenOff
+	GDownload
 )
 
 // DrawGlyph draws g centered on (cx, cy) in a box of size n.
@@ -132,6 +133,10 @@ func DrawGlyph(g ui.Gfx, k Glyph, cx, cy, n float32, c ui.Color) {
 		line(3.5, 8.5, 20.5, 8.5)
 		dot(6.2, 6.3, 0.9)
 		dot(8.8, 6.3, 0.9)
+	case GDownload:
+		line(12, 4, 12, 15)
+		line(7.5, 10.5, 12, 15, 16.5, 10.5)
+		line(5, 19.5, 19, 19.5)
 	case GScreenOff:
 		box(3, 4, 18, 12, 2)
 		line(8, 20, 16, 20)

@@ -38,7 +38,12 @@ func main() {
 	daemon := flag.Bool("daemon", false, "start resident but hidden (for spawn-at-startup)")
 	ver := flag.Bool("version", false, "print the version")
 	niriTheme := flag.Bool("niri-theme", false, "write niri's colors for the current theme and exit")
+	setupNiri := flag.Bool("setup-niri", false, "add Ember to niri's settings (Super+D, start at sign-in) and exit")
+	removeNiri := flag.Bool("remove-niri", false, "take Ember out of niri's settings and exit")
 	flag.Parse()
+	if *setupNiri || *removeNiri {
+		os.Exit(niriSetupCmd(*removeNiri))
+	}
 	if *niriTheme {
 		r := &resident{}
 		cfg, _ := os.UserConfigDir()
@@ -119,24 +124,33 @@ type resident struct {
 	conf   string
 	hidden []string
 	theme  string
-	list   []apps.App
-	stamp  int64
-	dirs   []string
+	upd    updates
+	// startNote is shown once, the first time Ember opens (niri setup)
+	startNote string
+	list      []apps.App
+	stamp     int64
+	dirs      []string
 }
 
 func newResident() *resident {
 	r := &resident{niri: niri.FromEnv(), dirs: apps.Dirs()}
+	r.upd.on = true
 	cfg, _ := os.UserConfigDir()
 	r.conf = filepath.Join(cfg, "ember")
 	r.loadSettings()
+	r.autoSetupNiri()
 	r.niriColors()
 	r.rescan()
+	go r.updateLoop()
 	return r
 }
 
 type settings struct {
 	Hidden []string `json:"hidden"`
 	Theme  string   `json:"theme,omitempty"` // one of Lite Go's palettes
+	// AutoUpdate is nil until changed: updates are on by default
+	AutoUpdate    *bool `json:"autoUpdate,omitempty"`
+	UpdateChecked int64 `json:"updateChecked,omitempty"`
 }
 
 func (r *resident) loadSettings() {
@@ -147,13 +161,16 @@ func (r *resident) loadSettings() {
 	var s settings
 	if json.Unmarshal(b, &s) == nil {
 		r.hidden, r.theme = s.Hidden, s.Theme
+		r.upd.on = s.AutoUpdate == nil || *s.AutoUpdate
+		r.upd.checked = s.UpdateChecked
 	}
 }
 
 func (r *resident) saveSettings() {
 	os.MkdirAll(r.conf, 0o755)
 	r.mu.Lock()
-	b, _ := json.MarshalIndent(settings{Hidden: r.hidden, Theme: r.theme}, "", "  ")
+	on := r.upd.on
+	b, _ := json.MarshalIndent(settings{Hidden: r.hidden, Theme: r.theme, AutoUpdate: &on, UpdateChecked: r.upd.checked}, "", "  ")
 	r.mu.Unlock()
 	tmp := filepath.Join(r.conf, "settings.json.tmp")
 	if os.WriteFile(tmp, b, 0o644) == nil {

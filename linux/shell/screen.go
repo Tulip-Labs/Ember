@@ -26,6 +26,11 @@ type Host interface {
 	Power(p PowerItem) error
 	SaveHidden(ids []string)
 	SaveTheme(id string)
+	// SetUpdates turns the automatic updates on or off; UpdateNow does what
+	// the update notice offers (install a downloaded package, or restart
+	// into the new version).
+	SetUpdates(on bool)
+	UpdateNow()
 }
 
 // PowerItem is one row of the power panel.
@@ -43,6 +48,7 @@ var Power = []PowerItem{
 	{GRestart, "Restart", "restart"},
 	{GPower, "Shut down", "poweroff"},
 	{GScreenOff, "Turn the screens off", "screensoff"},
+	{GDownload, "Automatic updates", "updates"},
 	{GExit, "Exit Ember", "exit"},
 }
 
@@ -59,6 +65,11 @@ type Screen struct {
 	Niri   bool          // windows come from niri (the row is shown even when empty)
 	Wins   []niri.Window // the open windows, Ember's own left out
 	Redraw bool
+	// Updates: whether they are on, and a notice with its button (empty
+	// when there is nothing to say)
+	UpdatesOn    bool
+	Notice       string
+	NoticeAction string
 
 	apps   []apps.App
 	hidden map[string]bool
@@ -761,6 +772,26 @@ func (s *Screen) footer(g ui.Gfx, l layout) {
 		}
 		ui.TextFit(g, hint, hx, fy+5, ui.FSmall, th.Ink2, l.power.X-hx-20)
 	}
+	if s.Notice != "" {
+		// the update notice, as a chip left of the power button
+		f := ui.FSmallBold
+		w := g.Measure(s.Notice, f) + 40
+		if s.NoticeAction != "" {
+			w += g.Measure(s.NoticeAction, f) + 28
+		}
+		r := ui.Rect{X: l.power.X - 14 - w, Y: l.power.CY() - 19, W: w, H: 38}
+		ui.Glass(g, r, 19, th, s.u.Hover(r), false)
+		DrawGlyph(g, GDownload, r.X+20, r.CY(), 16, th.Deep)
+		g.Text(s.Notice, r.X+34, ui.Mid(g, r.Y, r.H, f), f, th.Ink)
+		if s.NoticeAction != "" {
+			b := ui.Rect{X: r.R() - g.Measure(s.NoticeAction, f) - 30, Y: r.Y + 5, W: g.Measure(s.NoticeAction, f) + 24, H: r.H - 10}
+			ui.FillRound(g, b, b.H/2, th.Deep)
+			ui.TextCenter(g, s.NoticeAction, b, f, ui.White)
+			if s.u.Clickable(ui.Id("update"), r) {
+				s.Host.UpdateNow()
+			}
+		}
+	}
 	hot := s.u.Hover(l.power) || s.panel
 	ui.Glass(g, l.power, 24, th, hot, true)
 	DrawGlyph(g, GPower, l.power.CX(), l.power.CY(), 22, th.Ink)
@@ -785,11 +816,23 @@ func (s *Screen) powerPanel(g ui.Gfx, l layout) {
 		}
 		DrawGlyph(g, it.Glyph, r.X+26, r.CY(), 20, th.Ink)
 		f := ui.Font{Size: 15, Bold: true}
-		ui.TextFit(g, it.Label, r.X+54, ui.Mid(g, r.Y, r.H, f), f, th.Ink, r.W-62)
+		label := it.Label
+		if it.ID == "updates" {
+			label = "Automatic updates: Off"
+			if s.UpdatesOn {
+				label = "Automatic updates: On"
+			}
+		}
+		ui.TextFit(g, label, r.X+54, ui.Mid(g, r.Y, r.H, f), f, th.Ink, r.W-62)
 		if i == powerSep-1 {
 			g.FillRect(ui.Rect{X: p.X + 20, Y: r.B() + 1.5, W: p.W - 40, H: 1}, th.Body.Alpha(0.16))
 		}
 		if s.u.Clickable(ui.IdN("pwr", i), r) {
+			if it.ID == "updates" {
+				s.UpdatesOn = !s.UpdatesOn
+				s.Host.SetUpdates(s.UpdatesOn)
+				continue
+			}
 			s.panel = false
 			if err := s.Host.Power(it); err != nil {
 				s.Toast(it.Label + " did not work: " + err.Error())

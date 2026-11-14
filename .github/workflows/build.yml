@@ -1,20 +1,20 @@
-# Builds and tests Ember for Linux and Windows on every push. A tag like
-# v1.0.0 also publishes both as a GitHub release.
+# Builds Ember for Linux (.tar.gz, .deb, .rpm) and Windows on every push,
+# then installs the Linux packages on several distributions and starts Ember
+# on a headless Wayland (Weston) to check it opens and answers --toggle.
+# The release workflow calls this and publishes what it makes.
 name: Build
 
 on:
   push:
-    branches: [main]
-    tags: ["v*"]
+    branches: ["**"]
   pull_request:
   workflow_dispatch:
-
-permissions:
-  contents: write
+  workflow_call:
 
 jobs:
   linux:
-    runs-on: ubuntu-latest
+    # the oldest supported Ubuntu, so the program runs on older systems too
+    runs-on: ubuntu-22.04
     defaults:
       run:
         working-directory: linux
@@ -27,24 +27,25 @@ jobs:
       - name: Gio development files
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq gcc pkg-config libwayland-dev libx11-dev libx11-xcb-dev libxkbcommon-x11-dev libgles2-mesa-dev libegl1-mesa-dev libffi-dev libxcursor-dev libvulkan-dev libxfixes-dev
-      - name: Test
-        run: GOFLAGS=-mod=mod go test ./...
-      - name: Build
+          sudo apt-get install -y -qq gcc pkg-config dpkg-dev binutils libwayland-dev libx11-dev libx11-xcb-dev libxkbcommon-dev libxkbcommon-x11-dev libgles2-mesa-dev libegl1-mesa-dev libffi-dev libxcursor-dev libxfixes-dev
+      - name: Build, test, and make the .tar.gz, .deb and .rpm
+        run: ./build.sh dist
+      - name: go.mod and go.sum are tidy
         run: |
-          GOFLAGS=-mod=mod go build -trimpath -ldflags "-s -w" -o ember ./cmd/ember
-          mkdir -p out/ember-linux-x86_64/dist
-          cp ember install.sh out/ember-linux-x86_64/
-          cp dist/ember.kdl out/ember-linux-x86_64/dist/
-          cp ../LICENSE ../README.md out/ember-linux-x86_64/
-          tar -C out -czf ember-linux-x86_64.tar.gz ember-linux-x86_64
+          go mod tidy
+          git status --porcelain go.mod go.sum
+          git diff go.mod || true
+          if [ -n "$(git status --porcelain go.mod go.sum)" ]; then echo "----- go.sum -----"; cat go.sum; echo "----- end -----"; fi
       - uses: actions/upload-artifact@v4
         with:
-          name: ember-linux-x86_64
-          path: linux/ember-linux-x86_64.tar.gz
+          name: linux
+          path: |
+            linux/build/*.tar.gz
+            linux/build/*.deb
+            linux/build/*.rpm
 
   windows:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: windows
@@ -57,18 +58,91 @@ jobs:
           zip -q Ember-3.1-windows.zip Ember.exe INSTALAR.bat RESTAURAR-EXPLORER.bat README.txt README-INSTALAR.txt CHANGES.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: ember-windows
+          name: windows
           path: windows/Ember-3.1-windows.zip
 
-  release:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: [linux, windows]
-    runs-on: ubuntu-latest
+  install:
+    needs: linux
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {distro: "debian:12", kind: deb}
+          - {distro: "debian:13", kind: deb}
+          - {distro: "ubuntu:22.04", kind: deb}
+          - {distro: "ubuntu:24.04", kind: deb}
+          - {distro: "fedora:42", kind: rpm}
+          - {distro: "fedora:43", kind: rpm}
+          - {distro: "opensuse/tumbleweed", kind: zypper}
+          - {distro: "archlinux:latest", kind: tar}
+    container: ${{ matrix.distro }}
     steps:
       - uses: actions/download-artifact@v4
         with:
-          path: out
-          merge-multiple: true
-      - env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release create "${{ github.ref_name }}" out/* --repo "${{ github.repository }}" --title "Ember ${{ github.ref_name }}" --generate-notes
+          name: linux
+          path: pkg
+      - name: Install
+        run: |
+          set -e
+          case "${{ matrix.kind }}" in
+          deb)
+            apt-get update -qq
+            DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ./pkg/*.deb weston procps >/dev/null
+            ;;
+          rpm)
+            dnf install -y -q ./pkg/*.rpm weston procps-ng mesa-dri-drivers
+            ;;
+          zypper)
+            zypper --non-interactive -q install --allow-unsigned-rpm ./pkg/*.rpm weston procps Mesa-dri
+            ;;
+          tar)
+            pacman -Syu --noconfirm --needed wayland libxkbcommon libglvnd mesa libx11 libxcursor libxfixes weston procps-ng tar gzip >/dev/null
+            tar -xzf pkg/Ember-linux-x86_64.tar.gz -C /tmp
+            useradd -m tester
+            su tester -c "/tmp/Ember-linux-x86_64/install.sh"
+            ln -s /home/tester/.local/bin/ember /usr/local/bin/ember
+            ;;
+          esac
+          id -u tester >/dev/null 2>&1 || useradd -m tester
+      - name: Libraries are all there
+        run: |
+          exe=$(readlink -f "$(command -v ember)")
+          echo "$exe"; ember --version
+          ! ldd "$exe" | grep "not found"
+      - name: Ember opens on Wayland and answers --toggle
+        run: |
+          cat > /tmp/smoke.sh <<'SH'
+          set -u
+          export XDG_RUNTIME_DIR=$(mktemp -d) LIBGL_ALWAYS_SOFTWARE=1
+          weston --backend=headless --renderer=gl --socket=wl-test --width=1280 --height=800 > /tmp/weston.txt 2>&1 &
+          for i in $(seq 1 50); do [ -S "$XDG_RUNTIME_DIR/wl-test" ] && break; sleep 0.2; done
+          if [ ! -S "$XDG_RUNTIME_DIR/wl-test" ]; then echo "Weston did not start here; skipped:"; tail -5 /tmp/weston.txt; exit 0; fi
+          export WAYLAND_DISPLAY=wl-test
+          ember > /tmp/ember.txt 2>&1 &
+          pid=$!
+          sleep 8
+          kill -0 $pid || { cat /tmp/ember.txt; echo "Ember exited"; exit 1; }
+          timeout 5 ember --toggle || { cat /tmp/ember.txt; echo "--toggle (hide) failed"; exit 1; }
+          sleep 2
+          timeout 5 ember --toggle || { cat /tmp/ember.txt; echo "--toggle (show) failed"; exit 1; }
+          sleep 4
+          kill -0 $pid || { cat /tmp/ember.txt; echo "Ember exited after toggling"; exit 1; }
+          cat /tmp/ember.txt
+          kill $pid
+          echo "Ember opened, hid and came back."
+          SH
+          chmod 755 /tmp/smoke.sh
+          su tester -c "sh /tmp/smoke.sh"
+
+  nix:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: experimental-features = nix-command flakes
+      - name: nix build
+        run: |
+          nix build -L .#default
+          ls -l result/bin

@@ -20,7 +20,7 @@ Ember replaces the desktop you sign in to with one screen:
 - **Hide apps.** Right-click an app to hide it. Type `hidden` to see hidden apps; right-click one to bring it back.
 - **Open windows** (Linux). Every window niri manages, in a row. Click one to go to it, or right-click it to close it.
 - **Themes.** The palettes of Lite Go: Lagoon (the default), Crocus, Tulip, Sakura, Meadow, Peach Sky, Mint Lilac, Sorbet, Classic and Night. Click a dot in the search bar to switch; Ember keeps your choice.
-- **Power panel.** Lock, sleep, sign out, restart, shut down, turn the screens off, exit Ember.
+- **Power panel.** Lock, sleep, sign out, restart, shut down, turn the screens off, automatic updates, exit Ember.
 
 | | |
 |---|---|
@@ -45,29 +45,49 @@ The cards read `/proc` and `/sys` directly. If NetworkManager (`nmcli`) or `iwge
 
 ### Install
 
-Download `ember-linux-x86_64.tar.gz` from the [releases](../../releases). Unpack it and run:
+Ember needs **niri 25.11 or newer** (Fedora: `sudo dnf install niri`; other distributions: see [niri's install page](https://niri-wm.github.io/niri/Getting-Started.html)). Install Ember any of these ways, then sign in to the niri session and run `ember` once from a terminal: Ember adds itself to niri's settings (with a backup of `config.kdl`), and from then on it starts when you sign in and **Super+D** shows or hides it.
+
+**Fedora** (and openSUSE with `zypper addrepo`)
 
 ```sh
-./install.sh
+sudo dnf config-manager addrepo --from-repofile=https://tulip-labs.github.io/Ember/ember-shell.repo
+sudo dnf install ember-shell
 ```
 
-The script installs `ember` to `~/.local/bin`, copies `ember.kdl` next to your niri config, writes `ember-theme.kdl` with niri's colors for your theme, and adds `include "ember.kdl"` at the end of `~/.config/niri/config.kdl`. It saves a backup as `config.kdl.before-ember` first. This needs niri 25.11 or newer. Nothing is installed system-wide, so no root is needed. `./install.sh --remove` undoes all of it.
+**Debian, Ubuntu**
 
-To build from source instead, run `./install.sh` inside `linux/`. It needs Go 1.24 or newer and the Gio development files; the commands for each distribution are at the top of the script.
+```sh
+curl -fsSL https://tulip-labs.github.io/Ember/ember-shell.gpg | sudo tee /usr/share/keyrings/ember-shell.gpg >/dev/null
+echo "deb [signed-by=/usr/share/keyrings/ember-shell.gpg] https://tulip-labs.github.io/Ember/deb stable main" | sudo tee /etc/apt/sources.list.d/ember-shell.list
+sudo apt update && sudo apt install ember-shell
+```
+
+**Arch**: download the `PKGBUILD` from the latest [release](../../releases/latest) into an empty folder and run `makepkg -si`.
+
+**Nix**: `nix profile install github:Tulip-Labs/Ember`.
+
+**Any distribution, no root**: download `Ember-linux-x86_64.tar.gz` from the [releases](../../releases/latest), unpack it and run `./install.sh`. It installs `ember` to `~/.local/bin` and adds Ember to niri. `./install.sh --remove` takes it all out again.
+
+The `.deb` and `.rpm` are also attached to every release. The repository pages with these commands are at [tulip-labs.github.io/Ember](https://tulip-labs.github.io/Ember/).
+
+**niri settings by hand.** `ember --setup-niri` adds Ember to niri's settings and `ember --remove-niri` takes it out. Ember's part lives in `~/.config/niri/ember.kdl` (keys, start at sign-in, the full-screen rule) and `ember-theme.kdl` (colors); `config.kdl` only gets the line `include "ember.kdl"`.
+
+**Updates.** Ember checks the latest GitHub release every few hours and checks each download against the release's `SHA256SUMS`. A home-folder copy installs the new version by itself and offers **Restart** in the footer; a `.deb` or `.rpm` copy offers **Install** (your password is asked once). Turn it off in the power panel (Automatic updates). Copies from Nix, the AUR or rpm-ostree update the way those tools do. A Flatpak is not offered: Ember starts your apps and talks to niri, which a Flatpak sandbox does not allow.
 
 ### Fedora Atomic (Silverblue, Kinoite and others)
 
-Ember works on immutable Fedora without changes, because it installs only into your home folder:
-
-1. **Layer niri onto the system** (once, then restart). Add the niri COPR repository and install the package:
+1. **Layer niri and Ember onto the system** (once, then restart):
    ```sh
-   sudo curl -o /etc/yum.repos.d/niri.repo https://copr.fedorainfracloud.org/coprs/yalter/niri/repo/fedora-$(rpm -E %fedora)/yalter-niri-fedora-$(rpm -E %fedora).repo
-   rpm-ostree install niri
+   sudo curl -fsSLo /etc/yum.repos.d/ember-shell.repo https://tulip-labs.github.io/Ember/ember-shell.repo
+   rpm-ostree install niri ember-shell
    systemctl reboot
    ```
-   You can also use an image that already includes niri, such as one from the Universal Blue / wayblue family.
-2. **Install Ember from the release.** `install.sh` writes only to `~/.local/bin` and `~/.config/niri`, which are writable on Atomic.
-3. **Building from source** works best inside a toolbox (`toolbox create`, then install Go and the development files there with `dnf`). The `ember` binary you build there runs on the host, which already has the Wayland and graphics libraries it needs.
+   If your Fedora has no `niri` package, add its COPR first: `sudo curl -fsSLo /etc/yum.repos.d/niri.repo https://copr.fedorainfracloud.org/coprs/yalter/niri/repo/fedora-$(rpm -E %fedora)/yalter-niri-fedora-$(rpm -E %fedora).repo`.
+2. Sign in to niri and run `ember` once. Updates then come with `rpm-ostree upgrade`.
+
+Or, without layering Ember: use the `.tar.gz` (it installs into your home folder, which is writable on Atomic, and updates itself).
+
+**Building from source**: `linux/build.sh install` (inside a toolbox on Atomic). It needs Go 1.24 or newer and Gio's development files; the commands for each distribution are at the top of the script.
 
 ### Keys
 
@@ -95,8 +115,13 @@ linux/     Ember for Linux (Go + Gio)
   niri/       niri IPC client
   apps/       .desktop entries: scan, search, launch
   sysinfo/    processor, memory, network, disk and battery from /proc and /sys
+  update/     updates from the GitHub releases
   ui, giox, raster   the drawing toolkit shared with Lite Go
-  dist/ember.kdl     niri settings for Ember
+  niri/ember.kdl     niri settings for Ember
+  build.sh           builds the program, the .tar.gz, the .deb and the .rpm
+  packaging/         install.sh for the .tar.gz
+packaging/ the apt and dnf repositories, the AUR recipe, release notes
+flake.nix  the Nix package
 windows/   Ember 3.1 for Windows (C, Win32)
 docs/      screenshots, drawn by the tests
 ```

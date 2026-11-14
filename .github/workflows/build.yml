@@ -175,7 +175,7 @@ jobs:
           for t in lagoon night peach crocus; do
             bg=$(cd linux && GOFLAGS=-mod=mod go run ./tools/barpreview /tmp/bar-$t $t)
             printf 'output * resolution 1440x900 bg %s solid_color\nexec sh -c "waybar -l debug -c /tmp/bar-%s/config.jsonc -s /tmp/bar-%s/style.css > /tmp/waybar-%s.log 2>&1"\n' "$bg" "$t" "$t" "$t" > /tmp/sway-$t
-            sway -c /tmp/sway-$t > /tmp/sway-$t.log 2>&1 &
+            dbus-run-session -- sway -c /tmp/sway-$t > /tmp/sway-$t.log 2>&1 &
             pid=$!
             sleep 10
             sock=$(ls $XDG_RUNTIME_DIR/wayland-* 2>/dev/null | grep -v lock | head -1)

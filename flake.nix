@@ -15,7 +15,7 @@
           version = "1.0.0";
           src = self;
           modRoot = "linux";
-          vendorHash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+          vendorHash = "sha256-N98D/+RfTCw4Ui7b0liVWqyVXp2qtRzSK3g2PgTxVzE=";
           subPackages = [ "cmd/ember" ];
           tags = [ "novulkan" ];
           ldflags = [ "-s" "-w" ];

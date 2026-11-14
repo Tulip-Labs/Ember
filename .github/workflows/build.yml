@@ -124,13 +124,16 @@ jobs:
           sleep 8
           kill -0 $pid || { cat /tmp/ember.txt; echo "Ember exited"; exit 1; }
           timeout 5 ember --toggle || { cat /tmp/ember.txt; echo "--toggle (hide) failed"; exit 1; }
-          sleep 2
-          timeout 5 ember --toggle || { cat /tmp/ember.txt; echo "--toggle (show) failed"; exit 1; }
-          sleep 4
-          kill -0 $pid || { cat /tmp/ember.txt; echo "Ember exited after toggling"; exit 1; }
-          cat /tmp/ember.txt
+          sleep 3
+          if kill -0 $pid 2>/dev/null; then cat /tmp/ember.txt; echo "Ember is still running after hiding"; exit 1; fi
+          ember --toggle > /tmp/ember2.txt 2>&1 &
+          pid=$!
+          sleep 6
+          kill -0 $pid || { cat /tmp/ember2.txt; echo "Ember did not come back"; exit 1; }
+          grep -E "VmRSS|RssAnon|RssFile|RssShmem" /proc/$pid/status
+          cat /tmp/ember.txt /tmp/ember2.txt
           kill $pid
-          echo "Ember opened, hid and came back."
+          echo "Ember opened, hid (and quit), and came back."
           SH
           chmod 755 /tmp/smoke.sh
           su tester -c "sh /tmp/smoke.sh"

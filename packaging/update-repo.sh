@@ -67,6 +67,7 @@ cat > "$out/rpm/ember-shell.repo" <<REPO
 name=Ember
 baseurl=$URL/rpm
 enabled=1
+metadata_expire=1h
 $check
 REPO
 cp "$out/rpm/ember-shell.repo" "$out/ember-shell.repo"

@@ -1,0 +1,61 @@
+EMBER 3.1 - what changed
+========================
+
+REQUESTED
+- Desktop button removed (Explorer chip stays).
+- App list refreshes by itself on install/uninstall: the Start Menu folders
+  (user + all-users) are watched with change notifications, no extra thread,
+  debounced 1.5 s. "Uninstall X" shortcuts are hidden automatically.
+- Spring Mix is the only palette. Theme dots and the other themes are gone.
+- Network card is display only (no network panel, as requested).
+- Icons: new anti-aliased vector icon engine (CPU, RAM, network, disk, battery,
+  folder, search, power, sleep, sign out, restart, clock, close).
+- UI: usage bars on every card, letter badges on tiles, hover/selection states,
+  keyboard navigation, Ember-styled power panel instead of the plain Windows menu.
+- RAM: see below.
+
+RAM (why it was ~9 MB)
+- 3.0 kept a full-screen gradient DIB plus a full-screen double buffer
+  (about 8 MB each at 1080p) and 28 big card sprites.
+- 3.1: gradient is a ~160 px grid, bilinear-upscaled with dithering one 64-row
+  band at a time. Cards are 9-slice sprites. Icons are 8-bit masks.
+- While Ember is hidden: all caches freed, wlanapi unloaded, working set trimmed,
+  timers stopped (no polling at all).
+- wininet, wlanapi, powrprof and psapi are no longer linked; loaded on demand.
+- App list is a dynamic array (was 512 fixed slots of 712 bytes).
+- The "Ember x MB" label now reports private working set (matches Task Manager).
+
+BUGS FIXED
+1. Hiding more than ~4 KB of app names overflowed a buffer and crashed Ember
+   (wcscat_s abort). Also affected paths longer than MAX_PATH (swprintf_s).
+2. Network name kept stale characters from the previous SSID.
+3. Holding the Win key toggled Ember repeatedly (key auto-repeat flicker).
+4. The Win key hook ran heavy work inside the hook (could be dropped by Windows
+   after 300 ms). It now only posts a message.
+5. Win key while Ember is covered by another window hid Ember instead of
+   bringing it to the front.
+6. Popup menu did not close when clicking elsewhere (missing foreground fix).
+7. Scrolling went one empty row past the end; Page Down was not clamped.
+8. Ctrl+Backspace inserted a stray character into the search box.
+9. Quick second clicks were dropped (CS_DBLCLKS without handler).
+10. Typing "hidden" as a prefix (for example an app called "Hidden Folder") could
+    never be searched; it now needs the exact word.
+11. Layout was fixed-pixel: broke on 125%/150% scaling and on 1366x768
+    (values were cut off). Now DPI scaled; stat cards use a vertical layout.
+12. Screen resolution change was ignored (no WM_DISPLAYCHANGE handling).
+13. Launching an app that failed still hid Ember with no feedback. Now it stays
+    and shows a message.
+14. "Exit Ember" left a blank desktop. It now starts Explorer first.
+15. Network, disk and Wi-Fi were queried every second. Now 5 s / 30 s, only
+    while visible.
+16. The hidden-app check copied an 8 KB buffer for every app on every paint.
+
+NEW KEYS
+- Enter opens the top result (or the selected tile), arrows move the selection,
+  Esc clears the search or closes the power panel, Home/End/PageUp/PageDown.
+- Ember starts clean (empty search) every time it is shown.
+
+NOT TESTED ON REAL WINDOWS 11
+Built with mingw-w64 and run under Wine for rendering and the app-list
+auto-update. Win key hook, shell registration, power actions and
+battery/Wi-Fi readouts need a run on your PC.

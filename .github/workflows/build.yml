@@ -1,0 +1,74 @@
+# Builds and tests Ember for Linux and Windows on every push. A tag like
+# v1.0.0 also publishes both as a GitHub release.
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: linux
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache: false
+      - name: Gio development files
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq gcc pkg-config libwayland-dev libx11-dev libx11-xcb-dev libxkbcommon-x11-dev libgles2-mesa-dev libegl1-mesa-dev libffi-dev libxcursor-dev libvulkan-dev libxfixes-dev
+      - name: Test
+        run: GOFLAGS=-mod=mod go test ./...
+      - name: Build
+        run: |
+          GOFLAGS=-mod=mod go build -trimpath -ldflags "-s -w" -o ember ./cmd/ember
+          mkdir -p out/ember-linux-x86_64/dist
+          cp ember install.sh out/ember-linux-x86_64/
+          cp dist/ember.kdl out/ember-linux-x86_64/dist/
+          cp ../LICENSE ../README.md out/ember-linux-x86_64/
+          tar -C out -czf ember-linux-x86_64.tar.gz ember-linux-x86_64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ember-linux-x86_64
+          path: linux/ember-linux-x86_64.tar.gz
+
+  windows:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: windows
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Ember.exe with mingw-w64
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq mingw-w64 zip
+          ./build.sh
+          zip -q Ember-3.1-windows.zip Ember.exe INSTALAR.bat RESTAURAR-EXPLORER.bat README.txt README-INSTALAR.txt CHANGES.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ember-windows
+          path: windows/Ember-3.1-windows.zip
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [linux, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${{ github.ref_name }}" out/* --repo "${{ github.repository }}" --title "Ember ${{ github.ref_name }}" --generate-notes

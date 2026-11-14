@@ -1,0 +1,23 @@
+// Ember on niri. install.sh copies this file next to your niri config and
+// adds `include "ember.kdl"` at the end of config.kdl (niri 25.11 or newer).
+// Settings here win over the same keys earlier in config.kdl.
+
+// Ember is the first thing on screen after you sign in.
+spawn-at-startup "ember"
+
+binds {
+    // Super+D shows Ember, or hides it when it is on screen
+    // (it takes over niri's default app launcher key).
+    Mod+D hotkey-overlay-title="Show or hide Ember" { spawn "ember" "--toggle"; }
+}
+
+// Ember always covers the whole screen, with no border or shadow around it.
+window-rule {
+    match app-id="^ember$"
+    open-fullscreen true
+    open-focused true
+    draw-border-with-background false
+    border { off; }
+    focus-ring { off; }
+    shadow { off; }
+}

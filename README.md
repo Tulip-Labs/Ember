@@ -19,7 +19,7 @@ Ember replaces the desktop you sign in to with one screen:
 - **Apps.** Every installed app as a tile. Start typing to search, press Enter to open the top result, or move with the arrow keys.
 - **Hide apps.** Right-click an app to hide it. Type `hidden` to see hidden apps; right-click one to bring it back.
 - **Open windows** (Linux). Every window niri manages, in a row. Click one to go to it, or right-click it to close it.
-- **Themes.** The palettes of Lite Go: Crocus, Tulip, Spring Mix, Sakura, Meadow, Peach Sky, Mint Lilac, Sorbet, Lagoon, Classic and Night. Click a dot in the search bar to switch; Ember keeps your choice.
+- **Themes.** The palettes of Lite Go: Lagoon (the default), Crocus, Tulip, Sakura, Meadow, Peach Sky, Mint Lilac, Sorbet, Classic and Night. Click a dot in the search bar to switch; Ember keeps your choice.
 - **Power panel.** Lock, sleep, sign out, restart, shut down, turn the screens off, exit Ember.
 
 | | |

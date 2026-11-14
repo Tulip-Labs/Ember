@@ -74,9 +74,32 @@ type Screen struct {
 	u      ui.Ui
 }
 
-// New returns a screen in the Spring Mix palette (SetTheme picks another).
+// DefaultTheme is the palette Ember starts in.
+const DefaultTheme = "lagoon"
+
+// Themes are Lite Go's palettes that Ember offers (all but Spring Mix).
+var Themes = func() []*ui.Theme {
+	var out []*ui.Theme
+	for _, t := range ui.Themes {
+		if t.ID != "spring" {
+			out = append(out, t)
+		}
+	}
+	return out
+}()
+
+func themeByID(id string) *ui.Theme {
+	for _, t := range Themes {
+		if t.ID == id {
+			return t
+		}
+	}
+	return ui.ThemeByID(DefaultTheme)
+}
+
+// New returns a screen in the Lagoon palette (SetTheme picks another).
 func New(h Host) *Screen {
-	return &Screen{Host: h, Th: ui.ThemeByID("spring"), In: ui.NewInput(), hidden: map[string]bool{}, sel: -1}
+	return &Screen{Host: h, Th: themeByID(DefaultTheme), In: ui.NewInput(), hidden: map[string]bool{}, sel: -1}
 }
 
 // SetApps replaces the app list (after a scan) and the hidden set.
@@ -91,9 +114,7 @@ func (s *Screen) SetApps(list []apps.App, hidden []string) {
 
 // SetTheme picks one of Lite Go's palettes by id.
 func (s *Screen) SetTheme(id string) {
-	if id != "" {
-		s.Th = ui.ThemeByID(id)
-	}
+	s.Th = themeByID(id) // an unknown or old choice (Spring Mix) falls back to Lagoon
 }
 
 // Apps returns the app list.
@@ -548,10 +569,10 @@ func (s *Screen) strip(g ui.Gfx, l layout) {
 // to switch; the choice is kept) and returns where the dots start.
 func (s *Screen) themes(g ui.Gfx, l layout) float32 {
 	const d, gap = 18, 8
-	n := len(ui.Themes)
+	n := len(Themes)
 	x := l.files.X - 18 - float32(n)*(d+gap) + gap
 	cy := l.strip.CY()
-	for i, t := range ui.Themes {
+	for i, t := range Themes {
 		r := ui.RectAround(x+float32(i)*(d+gap)+d/2, cy, d, d)
 		if t.Grad != nil {
 			ui.FillGradient3(g, r, d/2, t.Grad)

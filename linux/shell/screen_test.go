@@ -193,16 +193,23 @@ func TestWindowsRow(t *testing.T) {
 
 func TestThemes(t *testing.T) {
 	s, h := sample(t)
+	if s.Th.ID != "lagoon" {
+		t.Fatalf("default theme %s", s.Th.ID)
+	}
+	s.SetTheme("spring") // removed: falls back to Lagoon
+	if s.Th.ID != "lagoon" {
+		t.Fatalf("spring kept: %s", s.Th.ID)
+	}
 	for _, id := range []string{"peach", "night", "crocus"} {
 		s.SetTheme(id)
 		shot(t, s, 1440, 900, "ember-"+id)
 	}
 	// clicking a dot switches the palette and keeps the choice
 	l := s.layout(1440, 900)
-	n := len(ui.Themes)
+	n := len(Themes)
 	x := l.files.X - 18 - float32(n)*26 + 8
 	click(t, s, x+1*26+9, l.strip.CY(), 1440, 900)
-	if s.Th.ID != ui.Themes[1].ID || h.theme != ui.Themes[1].ID {
+	if s.Th.ID != Themes[1].ID || h.theme != Themes[1].ID {
 		t.Fatalf("theme %s, saved %q", s.Th.ID, h.theme)
 	}
 }

@@ -1,10 +1,13 @@
 Ember: a calm, full-screen home for your desktop. A dashboard, your apps and your open windows on one pastel screen.
 
+## New in 1.0.2
+
+- The Ember bar is gone: Ember no longer changes Waybar, the bar at the top of niri. If 1.0.1 had restyled it, 1.0.2 puts Waybar's own files back by itself.
+
 ## New in 1.0.1
 
 - **No memory while hidden**: Ember quits when it hides, and Super+D starts it again.
 - **Brightness** card on the dashboard: drag or scroll.
-- **The Ember bar**: Waybar with Ember's glass look, an Ember button and a Power button (`ember --remove-bar` undoes it).
 - **Seven new themes**: Ember Glow, Sunset and Terracotta (warm and strong); Midnight, Ember Night, Aurora and Abyss (night).
 
 ## Ember for Linux 1.0.0 (on niri)

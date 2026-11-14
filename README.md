@@ -19,8 +19,7 @@ Ember replaces the desktop you sign in to with one screen:
 - **Apps.** Every installed app as a tile. Start typing to search, press Enter to open the top result, or move with the arrow keys.
 - **Hide apps.** Right-click an app to hide it. Type `hidden` to see hidden apps; right-click one to bring it back.
 - **Open windows** (Linux). Every window niri manages, in a row. Click one to go to it, or right-click it to close it.
-- **Themes.** Seventeen palettes. Light: Lagoon (the default), Crocus, Tulip, Sakura, Meadow, Peach Sky, Mint Lilac, Sorbet and Classic. Warm and strong: Ember Glow, Sunset and Terracotta. Night: Night, Midnight, Ember Night, Aurora and Abyss. Click a dot in the search bar to switch; Ember keeps your choice, and niri and the top bar follow it.
-- **The Ember bar.** Waybar, the bar at the top of niri, gets Ember's look: glass pills in the theme's colors, words instead of icons, niri's workspaces and window title, an **Ember** button and a **Power** button. `ember --remove-bar` puts your old bar back.
+- **Themes.** Seventeen palettes. Light: Lagoon (the default), Crocus, Tulip, Sakura, Meadow, Peach Sky, Mint Lilac, Sorbet and Classic. Warm and strong: Ember Glow, Sunset and Terracotta. Night: Night, Midnight, Ember Night, Aurora and Abyss. Click a dot in the search bar to switch; Ember keeps your choice, and niri's colors follow it.
 - **Power panel.** Lock, sleep, sign out, restart, shut down, turn the screens off, automatic updates, exit Ember.
 
 | | |

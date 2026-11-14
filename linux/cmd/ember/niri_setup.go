@@ -5,9 +5,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
-	"ember/bar"
 	"ember/niri"
 	"ember/shell"
 )
@@ -72,66 +72,34 @@ func (r *resident) autoSetupNiri() {
 	}
 }
 
-// barCmd is ember --setup-bar and --remove-bar.
-func barCmd(remove bool) int {
-	dir := bar.Dir()
+// removeOldBar undoes the Ember bar that Ember 1.0.1 could set up (it was
+// taken out in 1.0.2): if Waybar still has Ember's files, they go, Waybar's
+// own files come back, and Waybar starts again. Nothing happens otherwise.
+func removeOldBar(c *niri.Client) {
+	const mark = "/* Written by Ember: the Ember bar."
 	cfg, _ := os.UserConfigDir()
-	marker := filepath.Join(cfg, "ember", "bar-setup-done")
-	os.MkdirAll(filepath.Dir(marker), 0o755)
-	os.WriteFile(marker, nil, 0o644) // done by hand: never again by itself
-	if remove {
-		if err := bar.Remove(dir); err != nil {
-			fmt.Fprintln(os.Stderr, "ember:", err)
-			return 1
+	dir := filepath.Join(cfg, "waybar")
+	os.Remove(filepath.Join(cfg, "ember", "bar-setup-done"))
+	changed := false
+	for _, name := range []string{"config", "config.jsonc", "style.css"} {
+		p := filepath.Join(dir, name)
+		if b, err := os.ReadFile(p); err == nil && strings.HasPrefix(string(b), mark) {
+			os.Remove(p)
+			changed = true
 		}
-		restartWaybar(niri.FromEnv())
-		fmt.Println("Waybar has its own config back.")
-		return 0
+		if _, err := os.Stat(p + ".before-ember"); err == nil {
+			if _, err := os.Stat(p); err != nil {
+				os.Rename(p+".before-ember", p)
+				changed = true
+			}
+		}
 	}
-	r := &resident{}
-	r.conf = filepath.Join(cfg, "ember")
-	r.loadSettings()
-	if err := bar.Setup(dir, shell.ThemeByID(r.theme)); err != nil {
-		fmt.Fprintln(os.Stderr, "ember:", err)
-		return 1
+	if d := os.Getenv("XDG_DATA_HOME"); d != "" {
+		os.RemoveAll(filepath.Join(d, "fonts", "ember"))
+	} else if home, err := os.UserHomeDir(); err == nil {
+		os.RemoveAll(filepath.Join(home, ".local", "share", "fonts", "ember"))
 	}
-	restartWaybar(niri.FromEnv())
-	fmt.Println("Waybar has Ember's look (the old files end in .before-ember).")
-	return 0
-}
-
-// autoSetupBar: the first time Ember runs inside niri with Waybar there, it
-// gives the bar Ember's look (keeping Waybar's old files).
-func (r *resident) autoSetupBar() {
-	if r.niri == nil {
-		return
-	}
-	if _, err := exec.LookPath("waybar"); err != nil {
-		return
-	}
-	marker := filepath.Join(r.conf, "bar-setup-done")
-	if _, err := os.Stat(marker); err == nil {
-		return
-	}
-	os.MkdirAll(r.conf, 0o755)
-	os.WriteFile(marker, nil, 0o644)
-	if bar.Installed(bar.Dir()) {
-		return
-	}
-	if err := bar.Setup(bar.Dir(), shell.ThemeByID(r.theme)); err != nil {
-		return
-	}
-	restartWaybar(r.niri)
-	if r.startNote == "" {
-		r.startNote = "The top bar now has Ember's look (ember --remove-bar puts the old one back)"
-	}
-}
-
-// restartWaybar starts Waybar again so it picks up the new files and font;
-// niri starts it, so it stays niri's child as at sign-in.
-func restartWaybar(c *niri.Client) {
-	running := exec.Command("pgrep", "-x", "waybar").Run() == nil
-	if !running {
+	if !changed || exec.Command("pgrep", "-x", "waybar").Run() != nil {
 		return
 	}
 	exec.Command("pkill", "-x", "waybar").Run()

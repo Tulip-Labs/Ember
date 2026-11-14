@@ -12,7 +12,7 @@
       packages = forAll (pkgs: rec {
         ember = pkgs.buildGoModule {
           pname = "ember-shell";
-          version = "1.0.1";
+          version = "1.0.2";
           src = self;
           modRoot = "linux";
           vendorHash = "sha256-N98D/+RfTCw4Ui7b0liVWqyVXp2qtRzSK3g2PgTxVzE=";

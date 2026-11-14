@@ -25,13 +25,12 @@ import (
 	"gioui.org/app"
 
 	"ember/apps"
-	"ember/bar"
 	"ember/niri"
 	"ember/shell"
 	"ember/sysinfo"
 )
 
-const version = "1.0.1"
+const version = "1.0.2"
 
 func main() {
 	toggle := flag.Bool("toggle", false, "show Ember, or hide it when it is on screen")
@@ -41,15 +40,10 @@ func main() {
 	niriTheme := flag.Bool("niri-theme", false, "write niri's colors for the current theme and exit")
 	setupNiri := flag.Bool("setup-niri", false, "add Ember to niri's settings (Super+D, start at sign-in) and exit")
 	removeNiri := flag.Bool("remove-niri", false, "take Ember out of niri's settings and exit")
-	setupBar := flag.Bool("setup-bar", false, "give Waybar Ember's look (the Ember bar) and exit")
-	removeBar := flag.Bool("remove-bar", false, "put Waybar's own config back and exit")
 	power := flag.Bool("power", false, "show Ember with the power panel open")
 	flag.Parse()
 	if *setupNiri || *removeNiri {
 		os.Exit(niriSetupCmd(*removeNiri))
-	}
-	if *setupBar || *removeBar {
-		os.Exit(barCmd(*removeBar))
 	}
 	if *niriTheme {
 		r := &resident{}
@@ -152,7 +146,7 @@ func newResident() *resident {
 	r.conf = filepath.Join(cfg, "ember")
 	r.loadSettings()
 	r.autoSetupNiri()
-	r.autoSetupBar()
+	removeOldBar(r.niri) // the Ember bar of 1.0.1 is gone: Waybar gets its own files back
 	r.niriColors()
 	r.rescan()
 	go r.updateLoop()
@@ -377,9 +371,6 @@ func (r *resident) niriColors() {
 	r.mu.Unlock()
 	if err := niri.WriteTheme(dir, shell.ThemeByID(id)); err != nil {
 		log.Println("ember: niri colors:", err)
-	}
-	if ok, _ := bar.Restyle(bar.Dir(), shell.ThemeByID(id)); ok {
-		bar.Reload()
 	}
 }
 

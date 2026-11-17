@@ -3,7 +3,7 @@
 # Ember
 
 **A calm, full-screen home for your desktop.**
-A dashboard, your apps and your open windows on one pastel screen, in the house style of Lite Go.
+A dashboard, your apps and your open windows on one glass screen, in the house style of Lite Go.
 
 Windows 3.1 · Linux 1.0 on [niri](https://github.com/YaLTeR/niri) · GPL-3.0
 
@@ -19,15 +19,15 @@ Ember replaces the desktop you sign in to with one screen:
 - **Apps.** Every installed app as a tile. Start typing to search, press Enter to open the top result, or move with the arrow keys.
 - **Hide apps.** Right-click an app to hide it. Type `hidden` to see hidden apps; right-click one to bring it back.
 - **Open windows** (Linux). Every window niri manages, in a row. Click one to go to it, or right-click it to close it.
-- **Themes.** Seventeen palettes. Light: Lagoon (the default), Crocus, Tulip, Sakura, Meadow, Peach Sky, Mint Lilac, Sorbet and Classic. Warm and strong: Ember Glow, Sunset and Terracotta. Night: Night, Midnight, Ember Night, Aurora and Abyss. Click a dot in the search bar to switch; Ember keeps your choice, and niri's colors follow it.
+- **Themes.** Ten glass palettes in the spirit of Apple's Liquid Glass. Dark: Liquid (the default: black, clear glass and glossy liquid icons), Graphite, Deep Sea, Ember and Aurora. Light: Daylight, Mist, Rose, Sunrise and Mint. Click a dot in the search bar to switch; Ember keeps your choice, and niri's colors follow it.
 - **Power panel.** Lock, sleep, sign out, restart, shut down, turn the screens off, the top bar, automatic updates, exit Ember.
 - **No top bar.** Ember's dashboard has the clock, battery and network, so Ember hides the bar niri starts (Waybar) the first time it runs. **Power → Top bar** brings it back (or `ember --show-bar`; `ember --hide-bar` hides it).
 
 | | |
 |---|---|
 | ![Search](docs/ember-search.png) | ![Power panel](docs/ember-power.png) |
-| ![Peach Sky theme](docs/ember-peach.png) | ![Night theme](docs/ember-night.png) |
-| ![Sunset theme](docs/ember-sunset.png) | ![Midnight theme](docs/ember-midnight.png) |
+| ![Mist theme](docs/ember-mist.png) | ![Deep Sea theme](docs/ember-deepsea.png) |
+| ![Daylight theme](docs/ember-daylight.png) | ![Sunrise theme](docs/ember-sunrise.png) |
 
 ## Ember for Linux
 

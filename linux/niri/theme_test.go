@@ -17,11 +17,11 @@ func TestThemeKDL(t *testing.T) {
 		}
 	}
 	dir := t.TempDir()
-	if err := WriteTheme(dir, ui.ThemeByID("lagoon")); err != nil {
+	if err := WriteTheme(dir, ui.ThemeByID("liquid")); err != nil {
 		t.Fatal(err)
 	}
 	b, _ := os.ReadFile(filepath.Join(dir, ThemeFile))
-	if !strings.Contains(string(b), "Lagoon") {
+	if !strings.Contains(string(b), "Liquid") {
 		t.Fatal(string(b))
 	}
 	if os.Getenv("SHOW") != "" {
@@ -31,7 +31,7 @@ func TestThemeKDL(t *testing.T) {
 
 func TestSetup(t *testing.T) {
 	dir := t.TempDir()
-	th := ui.ThemeByID("lagoon")
+	th := ui.ThemeByID("liquid")
 	if _, err := Setup(dir, th); err != ErrNoConfig {
 		t.Fatalf("no config: %v", err)
 	}

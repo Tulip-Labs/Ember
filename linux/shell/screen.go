@@ -95,20 +95,13 @@ type Screen struct {
 }
 
 // DefaultTheme is the palette Ember starts in.
-const DefaultTheme = "lagoon"
+const DefaultTheme = "liquid"
 
-// Themes are Lite Go's palettes that Ember offers (all but Spring Mix).
-var Themes = func() []*ui.Theme {
-	var out []*ui.Theme
-	for _, t := range ui.Themes {
-		if t.ID != "spring" {
-			out = append(out, t)
-		}
-	}
-	return out
-}()
+// Themes are Lite Go's palettes: glass in the spirit of Apple's Liquid Glass,
+// Liquid (black, with glass and glossy icons) first.
+var Themes = ui.Themes
 
-// ThemeByID returns one of Ember's palettes, or Lagoon for an unknown id.
+// ThemeByID returns one of Ember's palettes, or Liquid for an unknown id.
 func ThemeByID(id string) *ui.Theme {
 	for _, t := range Themes {
 		if t.ID == id {
@@ -118,7 +111,7 @@ func ThemeByID(id string) *ui.Theme {
 	return ui.ThemeByID(DefaultTheme)
 }
 
-// New returns a screen in the Lagoon palette (SetTheme picks another).
+// New returns a screen in the Liquid palette (SetTheme picks another).
 func New(h Host) *Screen {
 	return &Screen{Host: h, Th: ThemeByID(DefaultTheme), In: ui.NewInput(), hidden: map[string]bool{}, sel: -1}
 }
@@ -135,7 +128,7 @@ func (s *Screen) SetApps(list []apps.App, hidden []string) {
 
 // SetTheme picks one of Lite Go's palettes by id.
 func (s *Screen) SetTheme(id string) {
-	s.Th = ThemeByID(id) // an unknown or old choice (Spring Mix) falls back to Lagoon
+	s.Th = ThemeByID(id) // an unknown or old choice falls back to Liquid
 }
 
 // Apps returns the app list.
@@ -585,8 +578,8 @@ func (s *Screen) stat(g ui.Gfx, i int, r ui.Rect) {
 	}
 	const pad, chipR = 16, 17
 	ccx, ccy := r.X+pad+chipR, r.Y+pad+chipR
-	ui.FillOval(g, ui.RectAround(ccx, ccy, 2*chipR, 2*chipR), s.tints()[kind%5])
-	DrawGlyph(g, glyph, ccx, ccy, 20, th.Ink)
+	ui.Liquid(g, ui.RectAround(ccx, ccy, 2*chipR, 2*chipR), 11, liquidTones(th)[kind%len(liquidTones(th))])
+	DrawGlyph(g, glyph, ccx, ccy, 20, ui.White)
 	if glyph == GBattery && st.Battery > 0 {
 		k := float32(20) / 24
 		bx, by := ccx-10, ccy-10
@@ -742,8 +735,8 @@ func (s *Screen) runHelper(name string, argv ...string) {
 func (s *Screen) windows(g ui.Gfx, l layout) {
 	th, r := s.Th, l.wins
 	s.card(r, 22, false)
-	ui.FillOval(g, ui.RectAround(r.X+32, r.CY(), 34, 34), th.TBlue)
-	DrawGlyph(g, GWindows, r.X+32, r.CY(), 18, th.Ink)
+	ui.Liquid(g, ui.RectAround(r.X+32, r.CY(), 34, 34), 11, liquidTones(th)[1])
+	DrawGlyph(g, GWindows, r.X+32, r.CY(), 18, ui.White)
 	head := "No open windows"
 	if n := len(s.Wins); n == 1 {
 		head = "1 window"
@@ -803,7 +796,7 @@ func badge(g ui.Gfx, cx, cy, r float32, name string, tints []ui.Color, ink ui.Co
 	for _, c := range strings.ToLower(name) {
 		h = h*31 + uint32(c)
 	}
-	ui.FillOval(g, ui.RectAround(cx, cy, 2*r, 2*r), tints[h%5])
+	ui.Liquid(g, ui.RectAround(cx, cy, 2*r, 2*r), r*0.62, tints[h%uint32(len(tints))])
 	ch := "#"
 	for _, c := range name {
 		if unicode.IsLetter(c) || unicode.IsDigit(c) {
@@ -840,7 +833,7 @@ func (s *Screen) grid(g ui.Gfx, l layout) {
 		if hot {
 			ui.FillRound(g, r, 20, th.Deep.Alpha(0.05))
 		}
-		badge(g, r.X+32, r.CY(), 19, a.Name, s.tints(), th.Ink, ui.Font{Size: 15, Bold: true})
+		badge(g, r.X+32, r.CY(), 19, a.Name, liquidTones(th), ui.White, ui.Font{Size: 15, Bold: true})
 		ui.TextFit(g, a.Name, r.X+62, ui.Mid(g, r.Y, r.H, nf), nf, th.Ink, r.W-76)
 		if sel {
 			ui.StrokeRound(g, r.Inset(1.1), 20, 2.2, th.Deep.Alpha(0.92))
@@ -922,7 +915,8 @@ func (s *Screen) powerPanel(g ui.Gfx, l layout) {
 		if hot {
 			ui.FillRound(g, r, 14, th.Deep.Alpha(0.12))
 		}
-		DrawGlyph(g, it.Glyph, r.X+26, r.CY(), 20, th.Ink)
+		ui.Liquid(g, ui.RectAround(r.X+26, r.CY(), 30, 30), 10, liquidTones(th)[i%len(liquidTones(th))])
+		DrawGlyph(g, it.Glyph, r.X+26, r.CY(), 17, ui.White)
 		f := ui.Font{Size: 15, Bold: true}
 		label := it.Label
 		if it.ID == "updates" {
@@ -977,4 +971,10 @@ func (s *Screen) Visible() []string {
 		out[i] = s.apps[v].Name
 	}
 	return out
+}
+
+// liquidTones are the colors of the liquid glass icons: the theme's accent,
+// then Apple's system indigo, teal, orange, pink, green, purple and cyan.
+func liquidTones(th *ui.Theme) []ui.Color {
+	return []ui.Color{th.Deep, ui.Hex("#5e5ce6"), ui.Hex("#30b0c7"), ui.Hex("#ff9f0a"), ui.Hex("#ff375f"), ui.Hex("#30d158"), ui.Hex("#bf5af2"), ui.Hex("#64d2ff")}
 }

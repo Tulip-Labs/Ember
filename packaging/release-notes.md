@@ -1,5 +1,9 @@
 Ember: a calm, full-screen home for your desktop. A dashboard, your apps and your open windows on one pastel screen.
 
+## New in 1.0.4
+
+- **New glass themes**, in the spirit of Apple's Liquid Glass. **Liquid** is the new default: a black backdrop with soft light behind clear glass panes and glossy liquid icons. Also Graphite, Deep Sea, Ember and Aurora (dark), and Daylight, Mist, Rose, Sunrise and Mint (light). The old palettes are gone; a saved one switches to Liquid.
+
 ## New in 1.0.3
 
 - Ember hides the top bar niri starts (Waybar) the first time it runs; Power, then Top bar, brings it back. The line in niri's config.kdl that starts it becomes a comment marked as Ember's (the old file is config.kdl.before-ember).

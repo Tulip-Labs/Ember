@@ -30,7 +30,7 @@ import (
 	"ember/sysinfo"
 )
 
-const version = "1.0.3"
+const version = "1.0.4"
 
 func main() {
 	toggle := flag.Bool("toggle", false, "show Ember, or hide it when it is on screen")

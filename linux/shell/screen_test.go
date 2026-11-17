@@ -201,14 +201,14 @@ func TestWindowsRow(t *testing.T) {
 
 func TestThemes(t *testing.T) {
 	s, h := sample(t)
-	if s.Th.ID != "lagoon" {
+	if s.Th.ID != "liquid" {
 		t.Fatalf("default theme %s", s.Th.ID)
 	}
-	s.SetTheme("spring") // removed: falls back to Lagoon
-	if s.Th.ID != "lagoon" {
-		t.Fatalf("spring kept: %s", s.Th.ID)
+	s.SetTheme("lagoon") // removed: falls back to Liquid
+	if s.Th.ID != "liquid" {
+		t.Fatalf("lagoon kept: %s", s.Th.ID)
 	}
-	for _, id := range []string{"peach", "night", "crocus", "glow", "sunset", "terracotta", "midnight", "embernight", "aurora", "abyss"} {
+	for _, id := range []string{"liquid", "graphite", "deepsea", "ember", "aurora", "daylight", "mist", "rose", "sunrise", "mint"} {
 		s.SetTheme(id)
 		shot(t, s, 1440, 900, "ember-"+id)
 	}

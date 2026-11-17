@@ -101,22 +101,6 @@ func (w *window) loop() error {
 	s.TopBarShown = topBarShown()
 	s.SetStats(r.stats.Fast())
 	r.stats.Slow()
-	wins := func() {
-		if r.niri == nil {
-			return
-		}
-		ws, err := r.niri.Windows()
-		if err != nil {
-			return
-		}
-		s.Wins = s.Wins[:0]
-		for _, x := range ws {
-			if x.AppID != "ember" {
-				s.Wins = append(s.Wins, x)
-			}
-		}
-	}
-	wins()
 	g := giox.NewGfx()
 	rd := &giox.Reader{Tag: tag}
 	var ops op.Ops
@@ -133,7 +117,6 @@ func (w *window) loop() error {
 			if now.Sub(last) >= 900*time.Millisecond {
 				last = now
 				s.SetStats(r.stats.Fast())
-				wins()
 			}
 			if now.Sub(lastScan) >= 5*time.Second {
 				lastScan = now

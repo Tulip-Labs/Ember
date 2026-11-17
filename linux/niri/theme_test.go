@@ -82,3 +82,18 @@ func TestBar(t *testing.T) {
 		t.Fatalf("not restored: %q", b)
 	}
 }
+
+func TestGlassWindows(t *testing.T) {
+	th := ui.ThemeByID("liquid")
+	if k := ThemeKDLFor(th, true); !strings.Contains(k, "blur true") || !strings.Contains(k, "geometry-corner-radius") {
+		t.Fatal(k)
+	}
+	if k := ThemeKDLFor(th, false); strings.Contains(k, "blur") {
+		t.Fatal(k)
+	}
+	for v, want := range map[string]bool{"niri 25.11 (abc)": false, "niri 26.04 (x)": true, "niri 26.10": true, "niri 27.1": true, "": false} {
+		if blurIn(v) != want {
+			t.Fatal(v)
+		}
+	}
+}

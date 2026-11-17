@@ -34,7 +34,30 @@ type Theme struct {
 	InverseOnSurface, ErrorContainer, OnErrorContainer, Scrim   Color
 }
 
+// clear turns a palette into colorless liquid glass: only the backdrop keeps
+// its color. Text is neutral and slightly see-through, accents are clear glass
+// (white light on dark themes, smoked glass on light ones), and the pastel
+// tints become frosted panes.
+func (t *Theme) clear() *Theme {
+	if t.Dark {
+		t.Ink, t.Body = Hex("#f5f5f7").Alpha(0.96), Hex("#f5f5f7").Alpha(0.86)
+		t.Ink2, t.Ink3 = Hex("#f5f5f7").Alpha(0.62), Hex("#f5f5f7").Alpha(0.40)
+		t.Deep, t.Deep2, t.Hl = White.Alpha(0.30), White.Alpha(0.20), White.Alpha(0.85)
+		glass := White.Alpha(0.10)
+		t.TBlue, t.TGreen, t.THoney, t.TPink, t.TLav = glass, glass, glass, glass, glass
+	} else {
+		t.Ink, t.Body = Hex("#1d1d1f").Alpha(0.94), Hex("#1d1d1f").Alpha(0.84)
+		t.Ink2, t.Ink3 = Hex("#1d1d1f").Alpha(0.60), Hex("#1d1d1f").Alpha(0.38)
+		t.Deep, t.Deep2, t.Hl = Hex("#1d1d1f").Alpha(0.72), Hex("#1d1d1f").Alpha(0.50), Hex("#1d1d1f").Alpha(0.80)
+		glass := White.Alpha(0.50)
+		t.TBlue, t.TGreen, t.THoney, t.TPink, t.TLav = glass, glass, glass, glass, glass
+		t.Shadow = Hex("#1d1d1f")
+	}
+	return t
+}
+
 func (t *Theme) derive() *Theme {
+	t.clear()
 	d := t.Dark
 	pick := func(dark, light Color) Color {
 		if d {

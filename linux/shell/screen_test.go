@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -180,25 +181,6 @@ func TestLaunchAndKeys(t *testing.T) {
 	}
 }
 
-func TestWindowsRow(t *testing.T) {
-	s, h := sample(t)
-	l := s.layout(1440, 900)
-	// the first window pill sits after the heading
-	c := raster.New(1440, 900, 1, fonts)
-	s.Frame(c, 1440, 900)
-	x := l.wins.X + 60 + c.Measure("10 windows", ui.Font{Size: 15, Bold: true}) + 18 + 20
-	click(t, s, x, l.wins.CY(), 1440, 900)
-	if len(h.focused) != 1 || h.focused[0] != 3 {
-		t.Fatalf("focus: %v", h.focused)
-	}
-	at(s, x, l.wins.CY())
-	s.In.RightPressed = true
-	shot(t, s, 1440, 900, "")
-	if len(h.closed) != 1 || h.closed[0] != 3 {
-		t.Fatalf("close: %v", h.closed)
-	}
-}
-
 func TestThemes(t *testing.T) {
 	s, h := sample(t)
 	if s.Th.ID != "liquid" {
@@ -232,16 +214,39 @@ func TestUpdateNotice(t *testing.T) {
 	if h.updateNow != 1 {
 		t.Fatalf("the notice's button: %d", h.updateNow)
 	}
-	// the power panel's switch
+}
+
+func TestPowerPanel(t *testing.T) {
+	s, h := sample(t)
+	l := s.layout(1440, 900)
+	if len(Power) != 3 || Power[0].ID != "sleep" || Power[1].ID != "restart" || Power[2].ID != "poweroff" {
+		t.Fatalf("power rows: %+v", Power)
+	}
 	click(t, s, l.power.CX(), l.power.CY(), 1440, 900)
-	for i, it := range Power {
-		if it.ID == "updates" {
-			r := l.powerRow(i)
-			click(t, s, r.CX(), r.CY(), 1440, 900)
+	r := l.powerRow(1)
+	click(t, s, r.CX(), r.CY(), 1440, 900)
+	if len(h.power) != 1 || h.power[0] != "restart" || s.panel {
+		t.Fatalf("restart: %v open=%v", h.power, s.panel)
+	}
+}
+
+func TestNetworkCard(t *testing.T) {
+	s, h := sample(t)
+	l := s.layout(1440, 900)
+	var card = -1
+	for i, k := range s.cards() {
+		if k == cardNetwork {
+			card = i
 		}
 	}
-	if s.UpdatesOn || h.updates {
-		t.Fatal("the switch did not turn updates off")
+	r := l.stats[card]
+	click(t, s, r.CX(), r.Y+30, 1440, 900)
+	if len(h.ran) != 1 || h.hides != 1 {
+		t.Fatalf("network: ran %v hides %d", h.ran, h.hides)
+	}
+	cmd := strings.Join(h.ran[0], " ")
+	if !strings.Contains(cmd, "nmcli --colors yes device wifi list") || !strings.Contains(cmd, "nmcli device wifi connect") {
+		t.Fatalf("network command: %q", cmd)
 	}
 }
 
@@ -284,21 +289,5 @@ func TestBrightness(t *testing.T) {
 	s.SetStats(sysinfo.Stats{Brightness: -1, Battery: -1})
 	if _, ok := s.brightRect(s.layout(1440, 900)); ok {
 		t.Fatal("a brightness card without a backlight")
-	}
-}
-
-func TestTopBarRow(t *testing.T) {
-	s, h := sample(t)
-	s.TopBarShown = true
-	l := s.layout(1440, 900)
-	click(t, s, l.power.CX(), l.power.CY(), 1440, 900)
-	for i, it := range Power {
-		if it.ID == "topbar" {
-			r := l.powerRow(i)
-			click(t, s, r.CX(), r.CY(), 1440, 900)
-		}
-	}
-	if s.TopBarShown || len(h.topbar) != 1 || h.topbar[0] {
-		t.Fatalf("top bar row: shown=%v calls=%v", s.TopBarShown, h.topbar)
 	}
 }

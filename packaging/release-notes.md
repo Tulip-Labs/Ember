@@ -1,4 +1,13 @@
-Ember: a calm, full-screen home for your desktop. A dashboard, your apps and your open windows on one pastel screen.
+Ember: a calm, full-screen home for your desktop. A dashboard and your apps on one screen of clear glass.
+
+## New in 1.0.5
+
+- **Colorless liquid glass.** Icons, cards, buttons and text are clear glass with no color of their own; only the backdrop keeps the theme's color. Text stays readable on every theme.
+- **niri's windows are glass too**: rounded corners, a fine glass focus ring, slightly see-through when not in use, and blurred behind on niri 26.04 or newer.
+- **Dark themes turn on dark mode, light themes light mode** for your apps (GTK and libadwaita apps, and the browsers and Electron apps that follow the desktop).
+- **A quieter screen**: no name or hints in the footer, and no row of open windows (niri's overview shows them).
+- **Power** now offers just Sleep, Restart and Shut down.
+- **Click the network card** to open a terminal with the Wi-Fi networks nearby and a short guide to nmcli (connect, disconnect, saved networks, Wi-Fi on and off).
 
 ## New in 1.0.4
 

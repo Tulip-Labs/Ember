@@ -138,6 +138,14 @@ func (t *Theme) derive() *Theme {
 		t.ErrorContainer, t.OnErrorContainer = Mix(t.Danger, White, 0.82), Mix(t.Danger, Black, 0.45)
 	}
 	t.Hover, t.Pressed = t.Ink.Alpha(0.08), t.Ink.Alpha(0.12) // M3 state layers
+	// clear glass roles: accents read as the ink itself, filled buttons are
+	// the ink with the backdrop's color on top, containers are frosted panes
+	t.Primary = t.Ink
+	t.OnPrimary = pick(Hex("#1d1d1f"), White)
+	t.PrimaryContainer, t.OnPrimaryContainer = pick(White.Alpha(0.12), White.Alpha(0.62)), t.Ink
+	t.SecondaryContainer, t.OnSecondaryContainer = pick(White.Alpha(0.08), White.Alpha(0.48)), t.Ink
+	t.Selection = t.Ink.Alpha(0.22)
+	t.CodeKeyword, t.CodeType = t.Ink, t.Body
 	return t
 }
 

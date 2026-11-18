@@ -3,7 +3,7 @@
 # Ember
 
 **A calm, full-screen home for your desktop.**
-A dashboard, your apps and your open windows on one glass screen, in the house style of Lite Go.
+A dashboard and your apps on one screen of clear, colorless liquid glass, in the house style of Iris.
 
 Windows 3.1 · Linux 1.0 on [niri](https://github.com/YaLTeR/niri) · GPL-3.0
 
@@ -18,10 +18,10 @@ Ember replaces the desktop you sign in to with one screen:
 - **Dashboard.** The date and time, then cards for processor, memory, network, disk and battery, each with a usage bar, and a **brightness** card: drag its slider or scroll over it.
 - **Apps.** Every installed app as a tile. Start typing to search, press Enter to open the top result, or move with the arrow keys.
 - **Hide apps.** Right-click an app to hide it. Type `hidden` to see hidden apps; right-click one to bring it back.
-- **Open windows** (Linux). Every window niri manages, in a row. Click one to go to it, or right-click it to close it.
+- **Wi-Fi in a terminal.** Click the network card: a terminal opens with the networks nearby and a short guide to nmcli.
 - **Themes.** Ten glass palettes in the spirit of Apple's Liquid Glass. Dark: Liquid (the default: black, clear glass and glossy liquid icons), Graphite, Deep Sea, Ember and Aurora. Light: Daylight, Mist, Rose, Sunrise and Mint. Click a dot in the search bar to switch; Ember keeps your choice, and niri's colors follow it.
-- **Power panel.** Lock, sleep, sign out, restart, shut down, turn the screens off, the top bar, automatic updates, exit Ember.
-- **No top bar.** Ember's dashboard has the clock, battery and network, so Ember hides the bar niri starts (Waybar) the first time it runs. **Power → Top bar** brings it back (or `ember --show-bar`; `ember --hide-bar` hides it).
+- **Power panel.** Sleep, restart and shut down.
+- **No top bar.** Ember's dashboard has the clock, battery and network, so Ember hides the bar niri starts (Waybar) the first time it runs. `ember --show-bar` brings it back; `ember --hide-bar` hides it.
 
 | | |
 |---|---|
@@ -39,8 +39,8 @@ How the pieces fit together:
 2. A window rule tells niri to show Ember full screen with no border.
 3. **Super+D** runs `ember --toggle`, which shows or hides Ember. Only one Ember runs; the toggle talks to it over a small socket in your runtime folder.
 4. When you open an app, Ember asks niri to start it, so the app belongs to niri, not to Ember. Then Ember hides itself.
-5. The windows row comes from niri's IPC (`$NIRI_SOCKET`): Ember asks which windows are open and tells niri which one to focus or close.
-6. niri's colors follow Ember's theme. When you pick a theme, Ember writes `ember-theme.kdl` (the backdrop between windows, the focus ring around the active window, shadows and the overview) and niri reloads it by itself, so the whole desktop changes together.
+5. Ember talks to niri over its IPC socket (`$NIRI_SOCKET`), for instance to bring its own window to the front.
+6. niri follows Ember's theme. When you pick a theme, Ember writes `ember-theme.kdl` (the backdrop between windows, a glass focus ring, shadows, the overview, and rounded, slightly see-through windows that niri 26.04 and newer also blur behind) and niri reloads it by itself, so the whole desktop changes together. Dark themes also switch your apps to dark mode and light themes to light mode (GNOME's `color-scheme` setting, which GTK, libadwaita and the desktop portal follow).
 7. When Ember hides, it quits: it uses **no memory at all** while you are in your apps, and Super+D starts it again in a moment. (While it is on screen, most of what it uses is the graphics driver every window shares, plus the screen-sized picture itself.)
 
 The cards read `/proc` and `/sys` directly. If NetworkManager (`nmcli`) or `iwgetid` is installed, the network card shows the Wi-Fi name. Settings are kept in `~/.config/ember/settings.json`.
@@ -74,7 +74,7 @@ The `.deb` and `.rpm` are also attached to every release. The repository pages w
 
 **niri settings by hand.** `ember --setup-niri` adds Ember to niri's settings and `ember --remove-niri` takes it out. Ember's part lives in `~/.config/niri/ember.kdl` (keys, start at sign-in, the full-screen rule) and `ember-theme.kdl` (colors); `config.kdl` only gets the line `include "ember.kdl"`.
 
-**Updates.** Ember checks the latest GitHub release every few hours and checks each download against the release's `SHA256SUMS`. A home-folder copy installs the new version by itself and offers **Restart** in the footer; a `.deb` or `.rpm` copy offers **Install** (your password is asked once). Turn it off in the power panel (Automatic updates). Copies from Nix, the AUR or rpm-ostree update the way those tools do. A Flatpak is not offered: Ember starts your apps and talks to niri, which a Flatpak sandbox does not allow.
+**Updates.** Ember checks the latest GitHub release every few hours and checks each download against the release's `SHA256SUMS`. A home-folder copy installs the new version by itself and offers **Restart** in the footer; a `.deb` or `.rpm` copy offers **Install** (your password is asked once). To turn it off, set `"autoUpdate": false` in `~/.config/ember/settings.json`. Copies from Nix, the AUR or rpm-ostree update the way those tools do. A Flatpak is not offered: Ember starts your apps and talks to niri, which a Flatpak sandbox does not allow.
 
 ### Fedora Atomic (Silverblue, Kinoite and others)
 
@@ -113,12 +113,12 @@ Ember 3.1 for Windows is a Win32 program in C that replaces Explorer as your she
 ```
 linux/     Ember for Linux (Go + Gio)
   cmd/ember   the program: resident process, toggle socket, window
-  shell/      the screen: dashboard, windows row, app grid, power panel
+  shell/      the screen: dashboard, app grid, power panel
   niri/       niri IPC client
   apps/       .desktop entries: scan, search, launch
   sysinfo/    processor, memory, network, disk and battery from /proc and /sys
   update/     updates from the GitHub releases
-  ui, giox, raster   the drawing toolkit shared with Lite Go
+  ui, giox, raster   the drawing toolkit shared with Iris (formerly Lite Go)
   niri/ember.kdl     niri settings for Ember
   build.sh           builds the program, the .tar.gz, the .deb and the .rpm
   packaging/         install.sh for the .tar.gz

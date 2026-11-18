@@ -30,7 +30,7 @@ import (
 	"ember/sysinfo"
 )
 
-const version = "1.0.4"
+const version = "1.0.5"
 
 func main() {
 	toggle := flag.Bool("toggle", false, "show Ember, or hide it when it is on screen")
@@ -161,6 +161,7 @@ func newResident() *resident {
 	removeOldBar(r.niri) // the Ember bar of 1.0.1 is gone: Waybar gets its own files back
 	r.autoHideBar()
 	r.niriColors()
+	go systemScheme(shell.ThemeByID(r.theme))
 	r.rescan()
 	go r.updateLoop()
 	return r
@@ -369,6 +370,7 @@ func (r *resident) SaveTheme(id string) {
 	r.mu.Unlock()
 	r.saveSettings()
 	r.niriColors()
+	go systemScheme(shell.ThemeByID(id))
 }
 
 // niriColors gives niri the colors of Ember's theme (focus ring, backdrop,

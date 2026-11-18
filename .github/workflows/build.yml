@@ -36,6 +36,12 @@ jobs:
           git status --porcelain go.mod go.sum
           git diff go.mod || true
           if [ -n "$(git status --porcelain go.mod go.sum)" ]; then echo "----- go.sum -----"; cat go.sum; echo "----- end -----"; fi
+      - name: Screenshots of every theme
+        run: EMBER_SHOTS=$PWD/shots go test ./shell -run 'TestScreens|TestThemes' -count=1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: screens
+          path: linux/shots/*.png
       - uses: actions/upload-artifact@v4
         with:
           name: linux

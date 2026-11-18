@@ -44,20 +44,12 @@ type PowerItem struct {
 	ID    string
 }
 
-// Power lists the panel's rows; a separator follows the first five.
+// Power lists the panel's rows: sleep, restart and shut down.
 var Power = []PowerItem{
-	{GLock, "Lock", "lock"},
 	{GMoon, "Sleep", "sleep"},
-	{GSignOut, "Sign out", "signout"},
 	{GRestart, "Restart", "restart"},
 	{GPower, "Shut down", "poweroff"},
-	{GScreenOff, "Turn the screens off", "screensoff"},
-	{GTopBar, "Top bar", "topbar"},
-	{GDownload, "Automatic updates", "updates"},
-	{GExit, "Exit Ember", "exit"},
 }
-
-const powerSep = 5
 
 // Screen is Ember's state between frames.
 type Screen struct {
@@ -67,8 +59,8 @@ type Screen struct {
 	St     ui.State
 	Now    time.Time
 	Stats  sysinfo.Stats
-	Niri   bool          // windows come from niri (the row is shown even when empty)
-	Wins   []niri.Window // the open windows, Ember's own left out
+	Niri   bool          // Ember runs in niri
+	Wins   []niri.Window // the open windows, Ember's own left out (not drawn)
 	Redraw bool
 	// Updates: whether they are on, and a notice with its button (empty
 	// when there is nothing to say)
@@ -200,18 +192,17 @@ func (s *Screen) toggleHidden(a apps.App) {
 // ---- layout (logical pixels; the same numbers as the Windows version) ----
 
 type layout struct {
-	w, h, mg                          float32
-	dash, strip, wins, grid           ui.Rect
-	cols, rows                        int
-	clock                             ui.Rect
-	stats                             []ui.Rect
-	files, term, power, panel, winsIn ui.Rect
+	w, h, mg                  float32
+	dash, strip, grid         ui.Rect
+	cols, rows                int
+	clock                     ui.Rect
+	stats                     []ui.Rect
+	files, term, power, panel ui.Rect
 }
 
 const (
 	dashY, dashH   = 32, 132
 	stripH         = 58
-	winsH          = 52
 	tileH, tilePit = 64, 78
 )
 
@@ -239,13 +230,7 @@ func (s *Screen) layout(w, h float32) layout {
 	by := y + (stripH-bh)/2
 	l.term = ui.Rect{X: l.strip.R() - 20 - 150, Y: by, W: 150, H: bh}
 	l.files = ui.Rect{X: l.term.X - 12 - 130, Y: by, W: 130, H: bh}
-	y += stripH
-	if s.Niri {
-		y += 14
-		l.wins = ui.Rect{X: l.mg, Y: y, W: total, H: winsH}
-		y += winsH
-	}
-	y += 22
+	y += stripH + 22
 	l.cols = min(6, max(2, int(total/290)))
 	l.rows = max(1, int((h-y-80+tilePit-tileH)/tilePit))
 	l.grid = ui.Rect{X: l.mg, Y: y, W: total, H: float32(l.rows) * tilePit}
@@ -391,9 +376,6 @@ func (s *Screen) Frame(g ui.Gfx, w, h float32) {
 	s.backdrop(g, w, h)
 	s.dashboard(g, l)
 	s.strip(g, l)
-	if s.Niri {
-		s.windows(g, l)
-	}
 	s.grid(g, l)
 	s.footer(g, l)
 	if s.panel {
@@ -432,20 +414,14 @@ func (s *Screen) card(r ui.Rect, rad float32, strong bool) {
 	ui.Glass(s.u.G, r, rad, s.Th, strong, true)
 }
 
-func (s *Screen) tints() []ui.Color {
-	th := s.Th
-	return []ui.Color{th.TBlue, th.TGreen, th.THoney, th.TPink, th.TLav}
-}
-
 func (s *Screen) dashboard(g ui.Gfx, l layout) {
 	th := s.Th
 	c := l.clock
 	s.card(c, 24, false)
 	date := s.Now.Format("Monday, 2 January")
-	g.Text(date, c.X+26, c.Y+34, ui.Font{Size: 17, Bold: true}, th.Ink)
-	clock := ui.Font{Size: 54, Bold: true}
-	g.Text(s.Now.Format("3:04 PM"), c.X+24, c.Y+92, clock, th.Ink)
-	g.Text(fmt.Sprintf("Ember  ·  %.1f MB", s.Stats.OwnMB), c.X+28, c.B()-18, ui.FSmall, th.Ink2)
+	g.Text(date, c.X+26, c.Y+40, ui.Font{Size: 17, Bold: true}, th.Ink2)
+	clock := ui.Font{Size: 58, Bold: true}
+	g.Text(s.Now.Format("3:04 PM"), c.X+24, c.Y+106, clock, th.Ink)
 	for i, r := range l.stats {
 		s.stat(g, i, r)
 	}
@@ -523,8 +499,9 @@ func (s *Screen) SetStats(st sysinfo.Stats) {
 
 func (s *Screen) stat(g ui.Gfx, i int, r ui.Rect) {
 	th, st := s.Th, s.Stats
-	s.card(r, 24, false)
 	kind := s.cards()[i]
+	hot := kind == cardNetwork && !s.panel && s.u.Hover(r)
+	s.card(r, 24, hot)
 	labels := []string{"CPU", "MEMORY", "NETWORK", "DISK", "BATTERY", "BRIGHTNESS"}
 	var val, capt string
 	var frac float64
@@ -578,12 +555,12 @@ func (s *Screen) stat(g ui.Gfx, i int, r ui.Rect) {
 	}
 	const pad, chipR = 16, 17
 	ccx, ccy := r.X+pad+chipR, r.Y+pad+chipR
-	ui.Liquid(g, ui.RectAround(ccx, ccy, 2*chipR, 2*chipR), 11, liquidTones(th)[kind%len(liquidTones(th))])
-	DrawGlyph(g, glyph, ccx, ccy, 20, ui.White)
+	ui.Liquid(g, ui.RectAround(ccx, ccy, 2*chipR, 2*chipR), 11, th.Ink)
+	DrawGlyph(g, glyph, ccx, ccy, 20, th.Ink)
 	if glyph == GBattery && st.Battery > 0 {
 		k := float32(20) / 24
 		bx, by := ccx-10, ccy-10
-		fill := th.Deep
+		fill := th.Ink
 		if st.Battery <= 15 {
 			fill = th.Danger
 		}
@@ -596,17 +573,63 @@ func (s *Screen) stat(g ui.Gfx, i int, r ui.Rect) {
 	bar := ui.Rect{X: r.X + pad, Y: r.B() - 24, W: r.W - 2*pad, H: 6}
 	ui.FillRound(g, bar, 3, th.Body.Alpha(0.15))
 	if f := float32(min(1, max(0, frac))); f > 0 {
-		ui.FillRound(g, ui.Rect{X: bar.X, Y: bar.Y, W: max(6, bar.W*f), H: bar.H}, 3, th.Deep)
+		ui.FillRound(g, ui.Rect{X: bar.X, Y: bar.Y, W: max(6, bar.W*f), H: bar.H}, 3, th.Ink.Alpha(0.78))
 	}
 	if kind == cardBrightness {
 		s.brightSlider(g, r, bar)
 	}
+	if kind == cardNetwork && !s.panel {
+		s.u.Tooltip("Wi-Fi networks and how to connect, in a terminal", r)
+		if s.u.Clickable(ui.Id("network"), r) {
+			s.runHelper("the terminal", NetworkCommand()...)
+		}
+	}
 }
+
+// NetworkCommand opens a terminal that lists the Wi-Fi networks nearby and
+// explains nmcli, NetworkManager's tool, then stays open at a shell prompt.
+func NetworkCommand() []string {
+	return apps.App{Exec: []string{"sh", "-c", networkScript}, Terminal: true}.Command()
+}
+
+const networkScript = `clear
+if ! command -v nmcli >/dev/null 2>&1; then
+  echo "nmcli (NetworkManager) is not installed, so the networks cannot be listed."
+  exec "${SHELL:-sh}"
+fi
+dev=$(nmcli -t -f DEVICE,TYPE device 2>/dev/null | awk -F: '$2=="wifi"{print $1; exit}')
+printf '\n  Wi-Fi networks nearby\n\n'
+if [ -n "$dev" ]; then
+  nmcli --colors yes device wifi list --rescan yes
+else
+  echo "  This computer has no Wi-Fi device."
+fi
+cat <<MANUAL
+
+  How to use nmcli (NetworkManager)
+
+  Connect to a network       nmcli device wifi connect "Name" --ask
+  Connect to a hidden one    nmcli device wifi connect "Name" hidden yes --ask
+  Look again for networks    nmcli device wifi list --rescan yes
+  What is connected now      nmcli device status
+  Disconnect                 nmcli device disconnect ${dev:-wlan0}
+  Saved networks             nmcli connection show
+  Forget a saved network     nmcli connection delete "Name"
+  Turn Wi-Fi off or on       nmcli radio wifi off   /   nmcli radio wifi on
+  Show the Wi-Fi password    nmcli device wifi show-password
+  Menus instead of commands  nmtui
+
+  "Name" is the network's name from the SSID column; --ask asks for the password.
+  Type a command below, or close this window when you are done.
+
+MANUAL
+exec "${SHELL:-sh}"
+`
 
 // brightSlider makes the brightness card's bar a slider: press anywhere on
 // the card's lower half and drag.
 func (s *Screen) brightSlider(g ui.Gfx, card, bar ui.Rect) {
-	th, in := s.Th, s.In
+	in := s.In
 	hit := ui.Rect{X: card.X, Y: bar.Y - 26, W: card.W, H: card.B() - bar.Y + 26}
 	if in.Pressed && s.u.Over(hit) && !s.panel {
 		s.dragBright = true
@@ -625,15 +648,12 @@ func (s *Screen) brightSlider(g ui.Gfx, card, bar ui.Rect) {
 		knob = ui.RectAround(kx, bar.CY(), 19, 19)
 	}
 	ui.FillOval(g, knob, ui.White)
-	ui.StrokeOval(g, knob, 2, th.Deep)
+	ui.StrokeOval(g, knob, 1.4, ui.Black.Alpha(0.12))
 }
 
 func (s *Screen) chip(g ui.Gfx, id ui.ID, r ui.Rect, glyph Glyph, label string) bool {
 	hot := s.u.Hover(r)
 	ui.Glass(g, r, r.H/2, s.Th, hot, false)
-	if hot {
-		ui.FillRound(g, r, r.H/2, s.Th.Deep.Alpha(0.06))
-	}
 	DrawGlyph(g, glyph, r.X+26, r.CY(), 18, s.Th.Ink)
 	ui.TextFit(g, label, r.X+46, ui.Mid(g, r.Y, r.H, ui.FBodyBold), ui.FBodyBold, s.Th.Ink, r.W-56)
 	return s.u.Clickable(id, r)
@@ -643,7 +663,7 @@ func (s *Screen) strip(g ui.Gfx, l layout) {
 	th, st := s.Th, l.strip
 	s.card(st, 22, false)
 	mid := st.CY()
-	ui.FillOval(g, ui.RectAround(st.X+32, mid, 34, 34), th.TLav)
+	ui.Liquid(g, ui.RectAround(st.X+32, mid, 34, 34), 17, th.Ink)
 	DrawGlyph(g, GSearch, st.X+32, mid, 18, th.Ink)
 	var label string
 	n := len(s.vis)
@@ -666,7 +686,7 @@ func (s *Screen) strip(g ui.Gfx, l layout) {
 		// a caret after the search, so typing reads as typing
 		cx := st.X + 60 + g.Measure("“"+string(s.filter), f) + 1
 		if cx < dotsX-20 && int(s.In.Now*2)%2 == 0 {
-			g.FillRect(ui.Rect{X: cx, Y: mid - 9, W: 1.6, H: 18}, th.Deep)
+			g.FillRect(ui.Rect{X: cx, Y: mid - 9, W: 1.6, H: 18}, th.Ink)
 		}
 		s.Redraw = true
 	}
@@ -730,73 +750,10 @@ func (s *Screen) runHelper(name string, argv ...string) {
 	s.Host.Hide()
 }
 
-// windows is the row of open windows niri manages: click one to go to it,
-// right-click to close it.
-func (s *Screen) windows(g ui.Gfx, l layout) {
-	th, r := s.Th, l.wins
-	s.card(r, 22, false)
-	ui.Liquid(g, ui.RectAround(r.X+32, r.CY(), 34, 34), 11, liquidTones(th)[1])
-	DrawGlyph(g, GWindows, r.X+32, r.CY(), 18, ui.White)
-	head := "No open windows"
-	if n := len(s.Wins); n == 1 {
-		head = "1 window"
-	} else if n > 1 {
-		head = fmt.Sprintf("%d windows", n)
-	}
-	f := ui.Font{Size: 15, Bold: true}
-	g.Text(head, r.X+60, ui.Mid(g, r.Y, r.H, f), f, th.Ink)
-	x := r.X + 60 + max(g.Measure("10 windows", f), g.Measure(head, f)) + 18
-	end := r.R() - 12
-	for i, w := range s.Wins {
-		title := w.Title
-		if title == "" {
-			title = w.AppID
-		}
-		pw := min(260, max(150, g.Measure(title, ui.FBodyBold)+64))
-		left := len(s.Wins) - i
-		if x+pw > end || (left > 1 && x+pw > end-70) {
-			if left > 0 && x+56 <= end {
-				more := ui.Rect{X: x, Y: r.Y + 8, W: 56, H: r.H - 16}
-				ui.FillRound(g, more, more.H/2, th.Body.Alpha(0.08))
-				ui.TextCenter(g, fmt.Sprintf("+%d", left), more, ui.FBodyBold, th.Ink2)
-			}
-			break
-		}
-		p := ui.Rect{X: x, Y: r.Y + 8, W: pw, H: r.H - 16}
-		hot := s.u.Hover(p)
-		ui.Glass(g, p, p.H/2, th, hot || w.Focused, false)
-		if w.Focused {
-			ui.StrokeRound(g, p.Inset(0.8), p.H/2, 1.6, th.Deep.Alpha(0.8))
-		}
-		badge(g, p.X+20, p.CY(), 13, w.AppID+title, s.tints(), th.Ink, ui.FSmallBold)
-		ui.TextFit(g, title, p.X+40, ui.Mid(g, p.Y, p.H, ui.FBodyBold), ui.FBodyBold, th.Ink, p.W-52)
-		if w.Urgent {
-			ui.FillOval(g, ui.RectAround(p.R()-12, p.Y+8, 7, 7), th.Hl)
-		}
-		id := ui.IdN("win", int(w.ID))
-		if s.u.Clickable(id, p) {
-			if err := s.Host.FocusWindow(w.ID); err != nil {
-				s.Toast("Could not switch: " + err.Error())
-			} else {
-				s.Host.Hide()
-			}
-		}
-		if s.In.RightPressed && s.u.Over(p) {
-			s.Host.CloseWindow(w.ID)
-			s.Toast("Closing " + title)
-		}
-		x += pw + 10
-	}
-}
-
 // badge is the letter chip of a tile: the first letter or digit of the name
-// on one of the five pastel tints, picked by the name so it never changes.
-func badge(g ui.Gfx, cx, cy, r float32, name string, tints []ui.Color, ink ui.Color, f ui.Font) {
-	h := uint32(7)
-	for _, c := range strings.ToLower(name) {
-		h = h*31 + uint32(c)
-	}
-	ui.Liquid(g, ui.RectAround(cx, cy, 2*r, 2*r), r*0.62, tints[h%uint32(len(tints))])
+// on a drop of clear liquid glass.
+func badge(g ui.Gfx, cx, cy, r float32, name string, ink ui.Color, f ui.Font) {
+	ui.Liquid(g, ui.RectAround(cx, cy, 2*r, 2*r), r*0.62, ink)
 	ch := "#"
 	for _, c := range name {
 		if unicode.IsLetter(c) || unicode.IsDigit(c) {
@@ -830,10 +787,7 @@ func (s *Screen) grid(g ui.Gfx, l layout) {
 		hot := s.u.Hover(r) && !s.panel
 		sel := s.keynav && vi == s.sel
 		s.card(r, 20, hot || sel)
-		if hot {
-			ui.FillRound(g, r, 20, th.Deep.Alpha(0.05))
-		}
-		badge(g, r.X+32, r.CY(), 19, a.Name, liquidTones(th), ui.White, ui.Font{Size: 15, Bold: true})
+		badge(g, r.X+32, r.CY(), 19, a.Name, th.Ink, ui.Font{Size: 15, Bold: true})
 		ui.TextFit(g, a.Name, r.X+62, ui.Mid(g, r.Y, r.H, nf), nf, th.Ink, r.W-76)
 		if sel {
 			ui.StrokeRound(g, r.Inset(1.1), 20, 2.2, th.Deep.Alpha(0.92))
@@ -854,24 +808,16 @@ func (s *Screen) grid(g ui.Gfx, l layout) {
 		ui.FillRound(g, track, 2, th.Body.Alpha(0.10))
 		rows := float32(m + l.rows)
 		th2 := track.H * float32(l.rows) / rows
-		ui.FillRound(g, ui.Rect{X: track.X, Y: track.Y + (track.H-th2)*float32(s.scroll)/float32(m), W: 4, H: th2}, 2, th.Deep.Alpha(0.55))
+		ui.FillRound(g, ui.Rect{X: track.X, Y: track.Y + (track.H-th2)*float32(s.scroll)/float32(m), W: 4, H: th2}, 2, th.Ink.Alpha(0.45))
 	}
 }
 
 func (s *Screen) footer(g ui.Gfx, l layout) {
 	th := s.Th
-	fy := l.h - 46
-	mark := ui.Font{Size: 26, Bold: true}
-	g.Text("Ember", l.mg, fy+9, mark, th.Ink)
-	hx := l.mg + g.Measure("Ember", mark) + 18
+	// the footer holds only short notes (an app hidden, an error) and the
+	// power button
 	if s.toast != "" {
-		ui.TextFit(g, s.toast, hx, fy+5, ui.FSmallBold, th.Deep, l.power.X-hx-20)
-	} else {
-		hint := "Super+D shows or hides  ·  Enter opens the top result  ·  right-click hides an app"
-		if s.Niri {
-			hint += "  ·  right-click a window to close it"
-		}
-		ui.TextFit(g, hint, hx, fy+5, ui.FSmall, th.Ink2, l.power.X-hx-20)
+		ui.TextFit(g, s.toast, l.mg, ui.Mid(g, l.power.Y, l.power.H, ui.FSmallBold), ui.FSmallBold, th.Ink, l.power.X-l.mg-20)
 	}
 	if s.Notice != "" {
 		// the update notice, as a chip left of the power button
@@ -882,7 +828,7 @@ func (s *Screen) footer(g ui.Gfx, l layout) {
 		}
 		r := ui.Rect{X: l.power.X - 14 - w, Y: l.power.CY() - 19, W: w, H: 38}
 		ui.Glass(g, r, 19, th, s.u.Hover(r), false)
-		DrawGlyph(g, GDownload, r.X+20, r.CY(), 16, th.Deep)
+		DrawGlyph(g, GDownload, r.X+20, r.CY(), 16, th.Ink)
 		g.Text(s.Notice, r.X+34, ui.Mid(g, r.Y, r.H, f), f, th.Ink)
 		if s.NoticeAction != "" {
 			b := ui.Rect{X: r.R() - g.Measure(s.NoticeAction, f) - 30, Y: r.Y + 5, W: g.Measure(s.NoticeAction, f) + 24, H: r.H - 10}
@@ -911,44 +857,14 @@ func (s *Screen) powerPanel(g ui.Gfx, l layout) {
 	}
 	for i, it := range Power {
 		r := l.powerRow(i)
-		hot := s.u.Hover(r)
-		if hot {
-			ui.FillRound(g, r, 14, th.Deep.Alpha(0.12))
+		if s.u.Hover(r) {
+			ui.FillRound(g, r, 14, th.Ink.Alpha(0.08))
 		}
-		ui.Liquid(g, ui.RectAround(r.X+26, r.CY(), 30, 30), 10, liquidTones(th)[i%len(liquidTones(th))])
-		DrawGlyph(g, it.Glyph, r.X+26, r.CY(), 17, ui.White)
+		ui.Liquid(g, ui.RectAround(r.X+26, r.CY(), 30, 30), 10, th.Ink)
+		DrawGlyph(g, it.Glyph, r.X+26, r.CY(), 17, th.Ink)
 		f := ui.Font{Size: 15, Bold: true}
-		label := it.Label
-		if it.ID == "updates" {
-			label = "Automatic updates: Off"
-			if s.UpdatesOn {
-				label = "Automatic updates: On"
-			}
-		}
-		if it.ID == "topbar" {
-			label = "Top bar: Hidden"
-			if s.TopBarShown {
-				label = "Top bar: Shown"
-			}
-		}
-		ui.TextFit(g, label, r.X+54, ui.Mid(g, r.Y, r.H, f), f, th.Ink, r.W-62)
-		if i == powerSep-1 {
-			g.FillRect(ui.Rect{X: p.X + 20, Y: r.B() + 1.5, W: p.W - 40, H: 1}, th.Body.Alpha(0.16))
-		}
+		ui.TextFit(g, it.Label, r.X+54, ui.Mid(g, r.Y, r.H, f), f, th.Ink, r.W-62)
 		if s.u.Clickable(ui.IdN("pwr", i), r) {
-			if it.ID == "updates" {
-				s.UpdatesOn = !s.UpdatesOn
-				s.Host.SetUpdates(s.UpdatesOn)
-				continue
-			}
-			if it.ID == "topbar" {
-				if err := s.Host.SetTopBar(!s.TopBarShown); err != nil {
-					s.Toast("The top bar could not change: " + err.Error())
-				} else {
-					s.TopBarShown = !s.TopBarShown
-				}
-				continue
-			}
 			s.panel = false
 			if err := s.Host.Power(it); err != nil {
 				s.Toast(it.Label + " did not work: " + err.Error())
@@ -971,10 +887,4 @@ func (s *Screen) Visible() []string {
 		out[i] = s.apps[v].Name
 	}
 	return out
-}
-
-// liquidTones are the colors of the liquid glass icons: the theme's accent,
-// then Apple's system indigo, teal, orange, pink, green, purple and cyan.
-func liquidTones(th *ui.Theme) []ui.Color {
-	return []ui.Color{th.Deep, ui.Hex("#5e5ce6"), ui.Hex("#30b0c7"), ui.Hex("#ff9f0a"), ui.Hex("#ff375f"), ui.Hex("#30d158"), ui.Hex("#bf5af2"), ui.Hex("#64d2ff")}
 }

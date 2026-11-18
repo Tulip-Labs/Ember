@@ -1,0 +1,21 @@
+Package: ember-shell
+Version: 1.0.5
+Architecture: amd64
+Maintainer: Tulip Labs <tulip-labs@users.noreply.github.com>
+Installed-Size: 11398
+Depends: libc6 (>= 2.34), libegl1, libwayland-client0 (>= 1.20.0), libwayland-cursor0 (>= 1.0.2), libwayland-egl1 (>= 1.15.0), libx11-6, libx11-xcb1 (>= 2:1.7.5), libxcursor1 (>> 1.1.2), libxfixes3 (>= 1:4.0.1), libxkbcommon-x11-0 (>= 0.5.0), libxkbcommon0 (>= 0.5.0), libgles2
+Recommends: niri
+Filename: pool/main/ember-shell_1.0.5_amd64.deb
+Size: 4784134
+MD5sum: 918fdd1e02dec37545fe05356fca4d9f
+SHA1: 8249120f3d29c811d2cdf1e875f4d3566028ced8
+SHA256: 82c18612f9f05baa022ad167b0153c6218a2e96336ac5f52f3eaab0f7c297376
+Section: x11
+Priority: optional
+Homepage: https://github.com/Tulip-Labs/Ember
+Description: Ember, a calm full-screen home for the niri compositor.
+ A dashboard, your apps and your open windows on one pastel screen.
+ Run ember once inside niri: it adds itself to niri's settings
+ (Super+D shows or hides it).
+License: GPL-3.0-only
+

@@ -34,6 +34,7 @@ jobs:
           merge-multiple: true
       - name: Release with every file
         run: |
+          rm -f art/*.png # the theme screenshots are for checking, not for the release
           ls -l art
           ver=${TAG#v}
           want=$(sed -n 's/^const version = "\(.*\)"/\1/p' linux/cmd/ember/main.go)

@@ -10,23 +10,25 @@
     in
     {
       packages = forAll (pkgs: rec {
-        ember = pkgs.buildGoModule {
+        # Ember 2 is Swift (6.0 or newer), GTK 4 and libadwaita; it has no
+        # Swift packages to fetch, so SwiftPM builds it offline
+        ember = pkgs.swiftPackages.stdenv.mkDerivation {
           pname = "ember-shell";
-          version = "1.0.5";
+          version = "2.0.0";
           src = self;
-          modRoot = "linux";
-          vendorHash = "sha256-N98D/+RfTCw4Ui7b0liVWqyVXp2qtRzSK3g2PgTxVzE=";
-          subPackages = [ "cmd/ember" ];
-          tags = [ "novulkan" ];
-          ldflags = [ "-s" "-w" ];
-          doCheck = false;
-          nativeBuildInputs = with pkgs; [ pkg-config makeWrapper ];
-          buildInputs = with pkgs; [
-            wayland libxkbcommon libGL xorg.libX11 xorg.libXcursor xorg.libXfixes xorg.libxcb
-          ];
-          # Gio opens EGL, OpenGL ES and the Wayland libraries at run time
-          postFixup = ''
-            wrapProgram $out/bin/ember --prefix LD_LIBRARY_PATH : ${pkgs.lib.makeLibraryPath (with pkgs; [ libGL wayland libxkbcommon xorg.libX11 xorg.libXcursor ])}
+          sourceRoot = "source/linux";
+          nativeBuildInputs = with pkgs; [ swiftPackages.swift swiftPackages.swiftpm pkg-config wrapGAppsHook4 ];
+          buildInputs = with pkgs; [ gtk4 libadwaita glib gdk-pixbuf swiftPackages.Foundation ];
+          configurePhase = "true";
+          buildPhase = ''
+            runHook preBuild
+            swift build -c release --disable-sandbox
+            runHook postBuild
+          '';
+          installPhase = ''
+            runHook preInstall
+            install -Dm755 "$(swift build -c release --show-bin-path)/Ember" $out/bin/ember
+            runHook postInstall
           '';
           meta = with pkgs.lib; {
             description = "A calm full-screen home for the niri compositor";

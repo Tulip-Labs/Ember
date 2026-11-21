@@ -1,6 +1,7 @@
 # Builds Ember for Linux (.tar.gz, .deb, .rpm) and Windows on every push,
-# then installs the Linux packages on several distributions and starts Ember
-# on a headless Wayland (Weston) to check it opens and answers --toggle.
+# checks that niri accepts the settings Ember writes, then installs the Linux
+# packages on several distributions and starts Ember on a headless Wayland
+# (Weston) to check it opens and answers --toggle.
 # The release workflow calls this and publishes what it makes.
 name: Build
 
@@ -13,35 +14,23 @@ on:
 
 jobs:
   linux:
-    # the oldest supported Ubuntu, so the program runs on older systems too
-    runs-on: ubuntu-22.04
+    # Ubuntu 24.04 (GTK 4.14, libadwaita 1.5): the oldest supported, so the
+    # program runs on newer systems too. Swift's libraries are built in.
+    runs-on: ubuntu-24.04
+    container: swift:6.1-noble
     defaults:
       run:
         working-directory: linux
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: "1.24"
-          cache: false
-      - name: Gio development files
+      - name: GTK 4, libadwaita and packaging tools
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq gcc pkg-config dpkg-dev binutils libwayland-dev libx11-dev libx11-xcb-dev libxkbcommon-dev libxkbcommon-x11-dev libgles2-mesa-dev libegl1-mesa-dev libffi-dev libxcursor-dev libxfixes-dev
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq libgtk-4-dev libadwaita-1-dev pkg-config dpkg-dev binutils curl ca-certificates >/dev/null
+          curl -fsSL https://github.com/goreleaser/nfpm/releases/download/v2.41.0/nfpm_2.41.0_Linux_x86_64.tar.gz | tar -xz -C /usr/local/bin nfpm
+          nfpm --version
       - name: Build, test, and make the .tar.gz, .deb and .rpm
         run: ./build.sh dist
-      - name: go.mod and go.sum are tidy
-        run: |
-          go mod tidy
-          git status --porcelain go.mod go.sum
-          git diff go.mod || true
-          if [ -n "$(git status --porcelain go.mod go.sum)" ]; then echo "----- go.sum -----"; cat go.sum; echo "----- end -----"; fi
-      - name: Screenshots of every theme
-        run: EMBER_SHOTS=$PWD/shots go test ./shell -run 'TestScreens|TestThemes' -count=1
-      - uses: actions/upload-artifact@v4
-        with:
-          name: screens
-          path: linux/shots/*.png
       - uses: actions/upload-artifact@v4
         with:
           name: linux
@@ -49,6 +38,51 @@ jobs:
             linux/build/*.tar.gz
             linux/build/*.deb
             linux/build/*.rpm
+
+  niri-settings:
+    # niri's own parser reads the files Ember writes, in both appearances
+    needs: linux
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux
+          path: pkg
+      - name: niri's config parser
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq libinput-dev libudev-dev libgtk-4-1 libadwaita-1-0 >/dev/null
+          tag=$(curl -fsSL https://api.github.com/repos/YaLTeR/niri/releases/latest | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p')
+          echo "niri $tag"
+          git clone -q --depth 1 --branch "$tag" https://github.com/YaLTeR/niri /tmp/niri
+          mkdir -p /tmp/niri/niri-config/examples
+          cat > /tmp/niri/niri-config/examples/check.rs <<'RS'
+          fn main() {
+              let p = std::env::args().nth(1).unwrap();
+              match niri_config::Config::load(std::path::Path::new(&p)).config {
+                  Ok(_) => println!("niri accepts {p}"),
+                  Err(e) => { eprintln!("{e:?}"); std::process::exit(1) }
+              }
+          }
+          RS
+          cd /tmp/niri && cargo build -q --release -p niri-config --example check
+      - name: Ember's settings, light and dark, with and without blur
+        run: |
+          tar -xzf pkg/Ember-linux-x86_64.tar.gz -C /tmp
+          ember=/tmp/Ember-linux-x86_64/ember
+          export HOME=$(mktemp -d)
+          mkdir -p $HOME/.config/niri
+          printf 'input {}\nspawn-at-startup "waybar"\nspawn-at-startup "swaybg" "-i" "/x.png"\n' > $HOME/.config/niri/config.kdl
+          $ember --setup-niri
+          cat $HOME/.config/niri/config.kdl
+          for look in --light --dark; do
+            for blur in 0 1; do
+              EMBER_NIRI_BLUR=$blur $ember $look
+              EMBER_NIRI_BLUR=$blur $ember --niri-theme
+              /tmp/niri/target/release/examples/check $HOME/.config/niri/config.kdl
+            done
+          done
+          $ember --remove-niri
+          cat $HOME/.config/niri/config.kdl
 
   windows:
     runs-on: ubuntu-24.04
@@ -74,10 +108,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {distro: "debian:12", kind: deb}
           - {distro: "debian:13", kind: deb}
-          - {distro: "ubuntu:22.04", kind: deb}
           - {distro: "ubuntu:24.04", kind: deb}
+          - {distro: "ubuntu:26.04", kind: deb}
           - {distro: "fedora:42", kind: rpm}
           - {distro: "fedora:43", kind: rpm}
           - {distro: "opensuse/tumbleweed", kind: zypper}
@@ -103,7 +136,7 @@ jobs:
             zypper --non-interactive -q install --allow-unsigned-rpm ./pkg/*.rpm weston procps Mesa-dri
             ;;
           tar)
-            pacman -Syu --noconfirm --needed wayland libxkbcommon libxkbcommon-x11 libglvnd mesa libx11 libxcursor libxfixes weston procps-ng tar gzip >/dev/null
+            pacman -Syu --noconfirm --needed gtk4 libadwaita mesa weston procps-ng tar gzip >/dev/null
             tar -xzf pkg/Ember-linux-x86_64.tar.gz -C /tmp
             useradd -m tester
             su tester -c "/tmp/Ember-linux-x86_64/install.sh"
@@ -120,7 +153,7 @@ jobs:
         run: |
           cat > /tmp/smoke.sh <<'SH'
           set -u
-          export XDG_RUNTIME_DIR=$(mktemp -d) LIBGL_ALWAYS_SOFTWARE=1
+          export XDG_RUNTIME_DIR=$(mktemp -d) LIBGL_ALWAYS_SOFTWARE=1 GSK_RENDERER=cairo
           weston --backend=headless --renderer=gl --socket=wl-test --width=1280 --height=800 > /tmp/weston.txt 2>&1 &
           for i in $(seq 1 50); do [ -S "$XDG_RUNTIME_DIR/wl-test" ] && break; sleep 0.2; done
           if [ ! -S "$XDG_RUNTIME_DIR/wl-test" ]; then echo "Weston did not start here; skipped:"; tail -5 /tmp/weston.txt; exit 0; fi
@@ -137,6 +170,7 @@ jobs:
           sleep 6
           kill -0 $pid || { cat /tmp/ember2.txt; echo "Ember did not come back"; exit 1; }
           grep -E "VmRSS|RssAnon|RssFile|RssShmem" /proc/$pid/status
+          ls ~/.local/share/ember/wallpapers
           cat /tmp/ember.txt /tmp/ember2.txt
           kill $pid
           echo "Ember opened, hid (and quit), and came back."
@@ -145,7 +179,9 @@ jobs:
           su tester -c "sh /tmp/smoke.sh"
 
   nix:
+    # Ember needs Swift 6, which nixpkgs may not have yet: this one may fail
     runs-on: ubuntu-24.04
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v31
@@ -155,4 +191,3 @@ jobs:
         run: |
           nix build -L .#default
           ls -l result/bin
-

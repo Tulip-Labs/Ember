@@ -65,15 +65,13 @@ sudo apt update && sudo apt install ember-shell swaybg
 
 **Arch**: download the `PKGBUILD` from the latest [release](../../releases/latest) into an empty folder and run `makepkg -si`.
 
-**Nix**: `nix profile install github:Tulip-Labs/Ember` (it builds from source and needs a nixpkgs with Swift 6).
-
 **Any distribution, no root**: download `Ember-linux-x86_64.tar.gz` from the [releases](../../releases/latest), unpack it and run `./install.sh`. It installs `ember` to `~/.local/bin` and adds Ember to niri. `./install.sh --remove` takes it all out again.
 
 **niri settings by hand.** `ember --setup-niri` adds Ember to niri's settings and `ember --remove-niri` takes it out. Ember's part lives in `~/.config/niri/ember.kdl` (keys, start at sign-in, the wallpaper, the full-screen rule) and `ember-theme.kdl` (the look); `config.kdl` only gets the line `include "ember.kdl"`. If `config.kdl` starts another wallpaper (swaybg, swww, hyprpaper and others), Ember comments that line out, marked as Ember's; turning the Iris wallpaper off (Power, then Iris wallpaper) or `--remove-niri` puts it back.
 
 **From the command line.** `ember --light`, `--dark` and `--auto` pick the appearance; `ember --hide-bar` and `--show-bar` hide or show Waybar; `ember --power` opens the power panel.
 
-**Updates.** Ember checks the latest GitHub release once a day and checks each download against the release's `SHA256SUMS`. A home-folder copy installs the new version by itself and offers **Restart**; a `.deb` or `.rpm` copy offers **Install** (your password is asked once). Power, then Automatic updates, turns this off. Copies from Nix, the AUR or rpm-ostree update the way those tools do. A Flatpak is not offered: Ember starts your apps and talks to niri, which a Flatpak sandbox does not allow.
+**Updates.** Ember checks the latest GitHub release once a day and checks each download against the release's `SHA256SUMS`. A home-folder copy installs the new version by itself and offers **Restart**; a `.deb` or `.rpm` copy offers **Install** (your password is asked once). Power, then Automatic updates, turns this off. Copies from the AUR or rpm-ostree update the way those tools do. A Flatpak is not offered: Ember starts your apps and talks to niri, which a Flatpak sandbox does not allow.
 
 **Updating from Ember 1.** Ember 1 updates itself to Ember 2 as usual. Ember 2 rewrites `ember.kdl` and `ember-theme.kdl` the first time it starts; Ember 1's ten themes become Light (the light ones) or Auto.
 
@@ -129,7 +127,6 @@ linux/     Ember for Linux (Swift, GTK 4, libadwaita)
   packaging/          install.sh for the .tar.gz
 assets/wallpapers/  the wallpapers' drawing (SVG) and gen.js, which makes it
 packaging/ the apt and dnf repositories, the AUR recipe, release notes
-flake.nix  the Nix package
 windows/   Ember 3.1 for Windows (C, Win32)
 docs/      screenshots
 ```

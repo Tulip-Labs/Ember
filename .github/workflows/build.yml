@@ -1,7 +1,8 @@
 # Builds Ember for Linux (.tar.gz, .deb, .rpm) and Windows on every push,
 # checks that niri accepts the settings Ember writes, then installs the Linux
-# packages on several distributions and starts Ember on a headless Wayland
-# (Weston) to check it opens and answers --toggle.
+# packages on several distributions (Fedora Silverblue's image among them)
+# and starts Ember on a headless Wayland (Weston) to check it opens and
+# answers --toggle.
 # The release workflow calls this and publishes what it makes.
 name: Build
 
@@ -51,7 +52,9 @@ jobs:
       - name: niri's config parser
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq libinput-dev libudev-dev libgtk-4-1 libadwaita-1-0 >/dev/null
-          tag=$(curl -fsSL https://api.github.com/repos/YaLTeR/niri/releases/latest | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p')
+          # the newest release tag, from git itself (GitHub's API limits anonymous calls)
+          tag=$(git ls-remote --tags --refs https://github.com/YaLTeR/niri 'v*' | sed 's#.*refs/tags/##' | sort -V | tail -1)
+          [ -n "$tag" ] || { echo "no niri release tag found"; exit 1; }
           echo "niri $tag"
           git clone -q --depth 1 --branch "$tag" https://github.com/YaLTeR/niri /tmp/niri
           mkdir -p /tmp/niri/niri-config/examples
@@ -113,6 +116,9 @@ jobs:
           - {distro: "ubuntu:26.04", kind: deb}
           - {distro: "fedora:42", kind: rpm}
           - {distro: "fedora:43", kind: rpm}
+          # Fedora Silverblue's own image: GTK 4 and libadwaita come with it,
+          # so the .rpm layers with nothing more (rpm-ostree install ember-shell)
+          - {distro: "quay.io/fedora-ostree-desktops/silverblue:43", kind: silverblue}
           - {distro: "opensuse/tumbleweed", kind: zypper}
           - {distro: "archlinux:latest", kind: tar}
     container: ${{ matrix.distro }}
@@ -131,6 +137,12 @@ jobs:
             ;;
           rpm)
             dnf install -y -q ./pkg/*.rpm weston procps-ng mesa-dri-drivers
+            ;;
+          silverblue)
+            # what rpm-ostree would layer: the package must need nothing the image lacks
+            rpm -i --test ./pkg/*.rpm
+            rpm -i ./pkg/*.rpm
+            dnf install -y -q weston procps-ng mesa-dri-drivers
             ;;
           zypper)
             zypper --non-interactive -q install --allow-unsigned-rpm ./pkg/*.rpm weston procps Mesa-dri
@@ -177,17 +189,3 @@ jobs:
           SH
           chmod 755 /tmp/smoke.sh
           su tester -c "sh /tmp/smoke.sh"
-
-  nix:
-    # Ember needs Swift 6, which nixpkgs may not have yet: this one may fail
-    runs-on: ubuntu-24.04
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-      - uses: cachix/install-nix-action@v31
-        with:
-          extra_nix_config: experimental-features = nix-command flakes
-      - name: nix build
-        run: |
-          nix build -L .#default
-          ls -l result/bin

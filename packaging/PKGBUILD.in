@@ -7,8 +7,9 @@ pkgdesc="A calm full-screen home for the niri compositor"
 arch=('x86_64')
 url="https://github.com/Tulip-Labs/Ember"
 license=('GPL-3.0-only')
-depends=('wayland' 'libxkbcommon' 'libxkbcommon-x11' 'libglvnd' 'libx11' 'libxcursor' 'libxfixes')
-optdepends=('niri: the window manager Ember is made for')
+depends=('gtk4' 'libadwaita' 'glib2' 'gdk-pixbuf2')
+optdepends=('niri: the window manager Ember is made for'
+            'swaybg: Ember\'s Iris wallpaper on the desktop')
 provides=('ember-shell')
 conflicts=('ember-shell')
 source=("Ember-linux-x86_64-${pkgver}.tar.gz::https://github.com/Tulip-Labs/Ember/releases/download/v${pkgver}/Ember-linux-x86_64.tar.gz")

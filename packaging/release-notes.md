@@ -1,4 +1,15 @@
-Ember: a calm, full-screen home for your desktop. A dashboard and your apps on one screen of clear glass.
+Ember: a calm, full-screen home for your desktop. A dashboard and your apps on clear liquid glass, over a wallpaper of Iris, goddess of the rainbow.
+
+## New in 2.0.0
+
+Ember for Linux is rewritten in **Swift with GTK 4 and libadwaita**, with the same Liquid Glass as the Iris browser.
+
+- **Apps as on a Mac**: every app with its own icon and its name under it, in pages you turn with the wheel, the arrow keys or the dots. Typing searches; Enter opens the first match.
+- **Light, Dark or Auto** (light by day, dark by night), at the bottom left. Ember's glass, niri's windows, your apps and the wallpaper all follow. `ember --light`, `--dark` and `--auto` do the same from a terminal.
+- **A new wallpaper**: Iris, goddess of the rainbow, in liquid glass, light and dark. niri shows it on the desktop with swaybg (`ember --wallpaper`, started by niri) and keeps it still in the overview; Ember blurs it behind its own screen as it comes up.
+- **niri dressed to match**: rounded windows, soft shadows, gaps, a focus ring in Iris's colours, and blur behind translucent windows on niri 26.04 and newer.
+- **Power** has Lock, Sleep, Turn off screens, Sign out, Restart and Shut down, and switches for the top bar, the wallpaper and automatic updates.
+- Needs GTK 4.14+ and libadwaita 1.5+ (Fedora 40+, Ubuntu 24.04+, Debian 13+, Arch, openSUSE Tumbleweed) and swaybg for the wallpaper. Ember 1's themes become Light or Auto.
 
 ## New in 1.0.5
 

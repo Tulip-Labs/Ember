@@ -1,5 +1,5 @@
 # Publishes a release: Actions > Release > Run workflow, with a tag like
-# v1.0.1 (it must match the version in linux/cmd/ember/main.go). Attaches the
+# v2.0.0 (it must match the version in linux/Sources/Ember/Main.swift). Attaches the
 # Linux .tar.gz, .deb, .rpm and the Windows zip, one SHA256SUMS (Ember's
 # updater checks downloads against it) and the AUR recipe, and updates the
 # apt and dnf repositories on GitHub Pages (gh-pages branch).
@@ -37,7 +37,7 @@ jobs:
           rm -f art/*.png # the theme screenshots are for checking, not for the release
           ls -l art
           ver=${TAG#v}
-          want=$(sed -n 's/^const version = "\(.*\)"/\1/p' linux/cmd/ember/main.go)
+          want=$(sed -n 's/.*static let version = "\(.*\)"/\1/p' linux/Sources/Ember/Main.swift)
           [ "$ver" = "$want" ] || { echo "the tag $TAG does not match the version $want"; exit 1; }
           sha256sum art/* | sed 's#  art/#  #' > SHA256SUMS
           sum=$(sha256sum art/Ember-linux-x86_64.tar.gz | cut -d' ' -f1)

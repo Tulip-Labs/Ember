@@ -1,29 +1,31 @@
 #!/bin/sh
-# Ember for Linux builds.
+# Ember for Linux builds (Swift, GTK 4, libadwaita).
 #   ./build.sh           the program, build/ember (runs the tests first)
 #   ./build.sh dist      also Ember-linux-<arch>.tar.gz, the .deb and the .rpm (in build/)
 #   ./build.sh install   build and install for you (~/.local/bin) and add Ember to niri
 #   ./build.sh uninstall take it out again
-# Building needs Go 1.24+ and Gio's development files:
-#   Fedora:        sudo dnf install golang gcc pkgconf wayland-devel libxkbcommon-devel libxkbcommon-x11-devel mesa-libEGL-devel mesa-libGLES-devel libX11-devel libXcursor-devel libXfixes-devel
+# Building needs Swift 6.0 or newer (swift.org/install) and the GTK 4 and
+# libadwaita development files:
+#   Fedora:        sudo dnf install gtk4-devel libadwaita-devel pkgconf
 #   Fedora Atomic: the same inside a toolbox (toolbox create && toolbox enter)
-#   Debian/Ubuntu: sudo apt install golang gcc pkg-config libwayland-dev libxkbcommon-dev libxkbcommon-x11-dev libegl-dev libgles-dev libx11-dev libx11-xcb-dev libxcursor-dev libxfixes-dev
-#   Arch:          sudo pacman -S go gcc pkgconf wayland libxkbcommon libxkbcommon-x11 mesa libx11 libxcursor libxfixes
+#   Debian/Ubuntu: sudo apt install libgtk-4-dev libadwaita-1-dev pkg-config
+#   Arch:          sudo pacman -S gtk4 libadwaita pkgconf
+# Swift's own libraries are built into the program (--static-swift-stdlib),
+# so it needs only GTK 4.14+, libadwaita 1.5+ and GLib where it runs.
 set -eu
 cd "$(dirname "$0")"
-export GOFLAGS="${GOFLAGS:--mod=mod}"
-VERSION=$(sed -n 's/^const version = "\(.*\)"/\1/p' cmd/ember/main.go)
+VERSION=$(sed -n 's/.*static let version = "\(.*\)"/\1/p' Sources/Ember/Main.swift)
 case "$(uname -m)" in
 x86_64) ARCH=x86_64 DEBARCH=amd64 ;;
 aarch64) ARCH=aarch64 DEBARCH=arm64 ;;
 *) ARCH=$(uname -m) DEBARCH=$ARCH ;;
 esac
-BIN="${XDG_BIN_HOME:-$HOME/.local/bin}"
 
 build() {
-	go test ./apps ./niri ./shell ./sysinfo ./update
+	swift test
+	swift build -c release --static-swift-stdlib -Xlinker --as-needed
 	mkdir -p build
-	CGO_ENABLED=1 go build -tags novulkan -trimpath -ldflags "-s -w" -o build/ember ./cmd/ember
+	strip -o build/ember "$(swift build -c release --show-bin-path)/Ember"
 	echo "Built build/ember ($VERSION)"
 }
 
@@ -31,8 +33,7 @@ tarball() {
 	d=build/Ember-linux-$ARCH
 	rm -rf "$d"
 	mkdir -p "$d"
-	cp build/ember ../LICENSE ../README.md "$d/"
-	cp packaging/install.sh "$d/"
+	cp build/ember ../LICENSE ../README.md packaging/install.sh "$d/"
 	tar -C build -czf "build/Ember-linux-$ARCH.tar.gz" "Ember-linux-$ARCH"
 }
 
@@ -47,16 +48,11 @@ deb_depends() {
 }
 
 rpm_depends() {
-	suffix="()(64bit)"
-	{
-		objdump -p build/ember | awk '/NEEDED/ {print $2}'
-		echo libGLESv2.so.2 # opened at run time
-	} | while read -r lib; do echo "      - $lib$suffix"; done
+	objdump -p build/ember | awk '/NEEDED/ {print $2}' | while read -r lib; do echo "      - $lib()(64bit)"; done
 }
 
 packages() {
-	# libGLESv2 is opened at run time (dlopen), so it is not in the list
-	deps="$(deb_depends), libgles2"
+	deps="$(deb_depends)"
 	echo "deb depends: $deps"
 	{
 		cat <<NFPM
@@ -71,7 +67,8 @@ homepage: https://github.com/Tulip-Labs/Ember
 license: GPL-3.0-only
 description: |-
   Ember, a calm full-screen home for the niri compositor.
-  A dashboard, your apps and your open windows on one pastel screen.
+  A dashboard and your apps (icons with their names, in pages) on clear
+  liquid glass over a wallpaper of Iris, light by day and dark by night.
   Run ember once inside niri: it adds itself to niri's settings
   (Super+D shows or hides it).
 contents:
@@ -94,14 +91,14 @@ contents:
 overrides:
   deb:
     depends: [$deps]
-    recommends: [niri]
+    recommends: [niri, swaybg]
   rpm:
-    recommends: [niri]
+    recommends: [niri, swaybg]
     depends:
 NFPM
 		rpm_depends
 	} > build/nfpm.yaml
-	nfpm="go run github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.41.0"
+	if command -v nfpm >/dev/null 2>&1; then nfpm=nfpm; else nfpm="go run github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.41.0"; fi
 	for p in deb rpm; do
 		$nfpm package --config build/nfpm.yaml --packager $p --target build/
 	done
